@@ -1,0 +1,56 @@
+.DS_Store
+**/.DS_Store
+.DS_Store?
+thirdparty/SEAL-4.1-bs/build/
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+
+# CmakeFiles
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# exclue build directory except for att_block_weights
+build/.cmake/
+build/CMakeFiles/
+build/CMakeCache.txt
+build/cmake_install.cmake
+build/Makefile
+build/compile_commands.json
+build/.ninja_deps
+build/.ninja_log
+build/build.ninja
+build/test
+.vscode/
