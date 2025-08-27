@@ -112,9 +112,65 @@ public:
                        const phantom::util::cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream) {
         const auto &s = stream_wrapper.get_stream();
         auto decoding_sparse_slots = decoding_sparse_slots_ == 0 ? sparse_slots_ : decoding_sparse_slots_;
+        if (sparse_slots_ == 0) {
+            sparse_slots_ = decoding_sparse_slots_;
+        } // temp fix because local encode will change sparse_slots_ but default is 0
         destination.resize(decoding_sparse_slots);
         decode_internal(context, plain, destination.data(), s);
     }
+    // inline void cuda_check(cudaError_t e, const char* msg) {
+    //     if (e != cudaSuccess) {
+    //         throw std::runtime_error(std::string(msg) + ": " + cudaGetErrorString(e));
+    //     }
+    // }
+    // template<class T>
+    // inline void decode(const PhantomContext &context,
+    //                 const PhantomPlaintext &plain,
+    //                 std::vector<T> &destination,
+    //                 const phantom::util::cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
+    // {
+    //     const auto &s = stream_wrapper.get_stream();
+
+    //     // 1) 计算正确槽位数
+    //     size_t slots = 65536 / 2;
+    //     // 若你确实有“稀疏解码”，仅当非 0 时才使用
+    //     if (decoding_sparse_slots_ != 0) slots = decoding_sparse_slots_;
+    //     else if (sparse_slots_ != 0)     slots = sparse_slots_;
+
+    //     if (slots == 0) {                 // 防御：不要调 decode_internal
+    //         destination.clear();
+    //         return;
+    //     }
+
+    //     // 2) 主机输出空间
+    //     destination.resize(slots);
+    
+
+    //     // 3) 设备端缓冲（复数）
+    //     cuDoubleComplex* d_out = nullptr;
+    //     cuda_check(cudaMalloc(&d_out, slots * sizeof(cuDoubleComplex)), "cudaMalloc d_out failed");
+
+    //     // 4) 真正的 GPU 解码：传设备指针
+    //     decode_internal(context, plain, d_out, s);
+
+
+    //     // 5) 回拷并写入 destination（T=double 取实部；T=std::complex<double> 直接拷）
+    //     std::vector<cuDoubleComplex> h_tmp(slots);
+    //     cuda_check(cudaMemcpyAsync(h_tmp.data(), d_out, slots * sizeof(cuDoubleComplex),
+    //                             cudaMemcpyDeviceToHost, s), "cudaMemcpyAsync d2h failed");
+    //     cuda_check(cudaStreamSynchronize(s), "cudaStreamSynchronize failed");
+
+    //     if constexpr (std::is_same_v<T, double>) {
+    //         for (size_t i = 0; i < slots; ++i) destination[i] = h_tmp[i].x; // 取实部
+    //     } else if constexpr (std::is_same_v<T, std::complex<double>>) {
+    //         for (size_t i = 0; i < slots; ++i) destination[i] = {h_tmp[i].x, h_tmp[i].y};
+    //     } else {
+    //         static_assert(!sizeof(T*), "Unsupported T for CKKS decode");
+    //     }
+
+    //     cudaFree(d_out);
+    // }
+
 
     inline void decode(const PhantomContext &context,
                        const PhantomPlaintext &plain,

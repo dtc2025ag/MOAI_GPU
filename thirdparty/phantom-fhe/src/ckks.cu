@@ -44,7 +44,7 @@ PhantomCKKSEncoder::PhantomCKKSEncoder(const PhantomContext &context) {
     // Newly added: set sparse_slots immediately if specified
     auto specified_sparse_slots = context_data.parms().sparse_slots();
     if (specified_sparse_slots) {
-        cout << "Setting decoding sparse slots to: " << specified_sparse_slots << endl;
+        // cout << "Setting decoding sparse slots to: " << specified_sparse_slots << endl;
         decoding_sparse_slots_ = specified_sparse_slots;
     }
 
@@ -213,7 +213,9 @@ void PhantomCKKSEncoder::decode_internal(const PhantomContext &context, const Ph
                     stream);
 
     nwt_2d_radix8_backward_inplace(plain_copy.get(), context.gpu_rns_tables(), coeff_modulus_size, 0, stream);
-
+    // cout << "[DEBUG] decoding_sparse_slots: " << decoding_sparse_slots_ << std::endl;
+    // cout << "[DEBUG] sparse_slots: " << sparse_slots_ << std::endl;
+    // cout << "[DEBUG] coeff_count: " << coeff_count << std::endl;
     // CRT-compose the polynomial
     if (decoding_sparse_slots_) {
         rns_tool.base_Ql().compose_array(gpu_ckks_msg_vec().in(), plain_copy.get(), gpu_upper_half_threshold.get(),

@@ -416,10 +416,21 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
     // Copy constant data to device constant memory
     random_bytes(prng_seed_error.get(), phantom::util::global_variables::prng_seed_byte_count, s);
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
+
+    std::cout << "Launching kernel with gridDim: " << gridDimGlb
+          << ", blockDim: " << blockDimGlb.x << std::endl;
+
+
     sample_ternary_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
             secret_key_array_.get(), prng_seed_error.get(), base_rns,
             poly_degree, coeff_mod_size);
 
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA kernel launch failed: " << cudaGetErrorString(err) << std::endl;
+    }
+    cudaStreamSynchronize(s);
+    
     // Newly added: adjust the hamming weight of the secret key if necessary
     if (auto sk_hamming_weight = context.key_context_data().parms().secret_key_hamming_weight()) {
 			std::cout << "Generating secret key with hamming weight: " << sk_hamming_weight << std::endl;
@@ -430,6 +441,12 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
       // Copy sk data from device to host
       uint64_t *sk_arr_non_ntt = new uint64_t[poly_degree * coeff_mod_size];
       cudaMemcpy(sk_arr_non_ntt, secret_key_array_.get(), poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+
+
+    //   for (int i = 0; i < 10; ++i) {
+    //         std::cout << "sk_arr_non_ntt[" << i << "] = " << sk_arr_non_ntt[i] << std::endl;
+    //     }
+
 
       // Adjust hamming weight for each rns sk (each sk should be the same but with different modulus)
       
