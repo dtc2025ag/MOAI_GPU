@@ -1,12 +1,20 @@
-using namespace std;
-using namespace seal; 
+#include "include.cuh"
 
-Ciphertext gelu_v2(const Ciphertext & x, 
-  const SEALContext& seal_context, const RelinKeys &relin_keys, const SecretKey& sk){
-  CKKSEncoder encoder(seal_context);
-  Evaluator evaluator(seal_context, encoder);
+using namespace std;
+using namespace std::chrono;
+using namespace phantom::util;
+using namespace phantom::arith;
+using namespace moai;
+
+PhantomCiphertext gelu_v2(PhantomCiphertext & x, 
+  PhantomContext& context, PhantomRelinKey &relin_keys, PhantomSecretKey& sk){
+
+  PhantomCKKSEncoder phantom_encoder(context);
+  //pack Phantom to SEAL style
+  Encoder encoder(&context, &phantom_encoder); 
+  Evaluator evaluator(&context, &phantom_encoder);
   //for test
-  Decryptor decryptor(seal_context, sk);
+  Decryptor decryptor(&context, &sk);
 
   double scale = x.scale();
   size_t slot_count = encoder.slot_count();
@@ -18,11 +26,11 @@ Ciphertext gelu_v2(const Ciphertext & x,
  -6.75419265e-05, 1.62401656e-04, 1.97100905e-03, -1.70511673e-03,
  -3.22621248e-02, 7.22135066e-03, 3.39374355e-01, 4.92938360e-01, 1.21149468e-02};
 
-  vector<Ciphertext> x_n(25);
+  vector<PhantomCiphertext> x_n(25);
   x_n[1] = x;
   double s0 = 0.1;
-  Plaintext inv_e;
-  encoder.encode(s0,x_n[1].parms_id(),x_n[1].scale(),inv_e);
+  PhantomPlaintext inv_e;
+  encoder.encode(s0,x_n[1].params_id(),x_n[1].scale(),inv_e);
   evaluator.multiply_plain_inplace(x_n[1],inv_e);
   evaluator.rescale_to_next_inplace(x_n[1]);
 
@@ -57,7 +65,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
   //compute x^3,5,9,17
   for (int i = 2; i < 17; i *= 2){
     //cout<<i+1<<" ";
-    evaluator.mod_switch_to_inplace(x_n[1],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[1],x_n[i].params_id());
     evaluator.multiply(x_n[1],x_n[i],x_n[i+1]);
     evaluator.relinearize_inplace(x_n[i+1],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+1]);
@@ -66,7 +74,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
   //compute x^6,10,18
   for (int i = 4; i < 17; i *= 2){
     //cout<<i+2<<" ";
-    evaluator.mod_switch_to_inplace(x_n[2],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[2],x_n[i].params_id());
     evaluator.multiply(x_n[2],x_n[i],x_n[i+2]);
     evaluator.relinearize_inplace(x_n[i+2],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+2]);
@@ -75,7 +83,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
   //compute x^7,11,19
   for (int i = 4; i < 17; i *= 2){
     //cout<<i+3<<" ";
-    evaluator.mod_switch_to_inplace(x_n[3],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[3],x_n[i].params_id());
     evaluator.multiply(x_n[3],x_n[i],x_n[i+3]);
     evaluator.relinearize_inplace(x_n[i+3],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+3]);
@@ -84,7 +92,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
   //compute x^12,20
   for (int i = 8; i < 17; i *= 2){
 
-    evaluator.mod_switch_to_inplace(x_n[4],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[4],x_n[i].params_id());
     evaluator.multiply(x_n[4],x_n[i],x_n[i+4]);
     evaluator.relinearize_inplace(x_n[i+4],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+4]);
@@ -92,7 +100,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
 
   //compute x^13,21
   for (int i = 8; i < 17; i *= 2){
-    evaluator.mod_switch_to_inplace(x_n[5],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[5],x_n[i].params_id());
     evaluator.multiply(x_n[5],x_n[i],x_n[i+5]);
     evaluator.relinearize_inplace(x_n[i+5],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+5]);
@@ -100,7 +108,7 @@ Ciphertext gelu_v2(const Ciphertext & x,
   
   //compute x^14,22
   for (int i = 8; i < 17; i *= 2){
-    evaluator.mod_switch_to_inplace(x_n[6],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[6],x_n[i].params_id());
     evaluator.multiply(x_n[6],x_n[i],x_n[i+6]);
     evaluator.relinearize_inplace(x_n[i+6],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+6]);
@@ -108,28 +116,50 @@ Ciphertext gelu_v2(const Ciphertext & x,
 
   //compute x^15,23
   for (int i = 8; i < 17; i *= 2){
-    evaluator.mod_switch_to_inplace(x_n[7],x_n[i].parms_id());
+    evaluator.mod_switch_to_inplace(x_n[7],x_n[i].params_id());
     evaluator.multiply(x_n[7],x_n[i],x_n[i+7]);
     evaluator.relinearize_inplace(x_n[i+7],relin_keys);
     evaluator.rescale_to_next_inplace(x_n[i+7]);
   }
 
   //compute x^24
-  evaluator.mod_switch_to_inplace(x_n[8],x_n[16].parms_id());
+  evaluator.mod_switch_to_inplace(x_n[8],x_n[16].params_id());
   evaluator.multiply(x_n[8],x_n[16],x_n[24]);
   evaluator.relinearize_inplace(x_n[24],relin_keys);
   evaluator.rescale_to_next_inplace(x_n[24]);
 
-  Plaintext plain_result;
+  PhantomPlaintext plain_result;
   vector<double> result;
+  /*
+  decryptor.decrypt(x_n[15],plain_result);
+  encoder.decode(plain_result,result);
+  cout <<"x^15: ";
+  for (int ind = 0 ; ind < 10 ; ++ind){
+    cout <<result[ind]<<" ";
+  }
+  cout <<endl;
+*/
+//  cout <<"x^n. "<<endl;
+
+//  double pt0 = 8*s0;
+//  double pt = pt0;
+//  double ptsum = 0.0;
 
   //compute \sum a_(24-i)x^i
-  Ciphertext res;
+  PhantomCiphertext res;
   for (int i = 1; i < 25; ++i){
-    evaluator.mod_switch_to_inplace(x_n[i],x_n[24].parms_id());
-
-    Plaintext coeff;
-    encoder.encode(coeff_high_to_low[24-i],x_n[i].parms_id(),x_n[i].scale(),coeff);
+    evaluator.mod_switch_to_inplace(x_n[i],x_n[24].params_id());
+/*
+    decryptor.decrypt(x_n[i],plain_result);
+    encoder.decode(plain_result,result);
+    cout <<"Ciphertext: x^"<<i<<": ";
+      for (int ind = 0 ; ind < 1 ; ++ind){
+          cout <<result[ind]<<" ";
+      }
+      //cout <<endl;
+*/
+    PhantomPlaintext coeff;
+    encoder.encode(coeff_high_to_low[24-i],x_n[i].params_id(),x_n[i].scale(),coeff);
     evaluator.multiply_plain_inplace(x_n[i],coeff);
     evaluator.rescale_to_next_inplace(x_n[i]);
     x_n[i].scale() = scale;
@@ -138,16 +168,49 @@ Ciphertext gelu_v2(const Ciphertext & x,
     }
     else{
       evaluator.add_inplace(res,x_n[i]);
-    }   
+    }
+/*
+    //cout <<"a: "<<coeff_high_to_low[24-i]<<", ";
+    encoder.decode(coeff,result);
+    cout <<", dcd(ecd(a)): ";
+    for (int ind = 0 ; ind < 1 ; ++ind){
+        cout <<result[ind]<<" ";
+    }
+    //cout <<endl;
+
+    decryptor.decrypt(x_n[i],plain_result);
+    encoder.decode(plain_result,result);
+    cout <<", a_"<<24-i<<" * x^"<<i<<": ";
+    for (int ind = 0 ; ind < 1 ; ++ind){
+        cout <<result[ind]<<" ";
+    }
+    //cout <<endl;
+
+    decryptor.decrypt(res,plain_result);
+    encoder.decode(plain_result,result);
+    cout <<", sum: ";
+    for (int ind = 0 ; ind < 1 ; ++ind){
+        cout <<result[ind]<<" ";
+    }
+    cout <<endl;
+
+    cout <<"Plaintext: x^"<<i<<": "<<pt;
+    double temppt = pt*coeff_high_to_low[24-i];
+    cout <<", a_"<<24-i<<" * x^"<<i<<": "<<temppt;
+    ptsum += temppt;
+    pt *= pt0;
+    cout <<", sum: "<<ptsum<<endl;
+  */    
     
   }
 
   //cout <<"sum. "<<endl;
   //compute res += ecd(a[24])
-  Plaintext coeff0;
-  encoder.encode(coeff_high_to_low[24],res.parms_id(),res.scale(),coeff0);
+  PhantomPlaintext coeff0;
+  encoder.encode(coeff_high_to_low[24],res.params_id(),res.scale(),coeff0);
   evaluator.add_plain_inplace(res,coeff0);
-
+  //ptsum += coeff_high_to_low[24];
+  //cout <<"pt result = "<<ptsum<<endl;
 
   return res;
 

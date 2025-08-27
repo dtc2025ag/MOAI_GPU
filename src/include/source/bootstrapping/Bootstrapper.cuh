@@ -9,7 +9,7 @@
 #include "ModularReducer.cuh"
 
 using namespace std;
-using namespace nexus;
+using namespace moai;
 using namespace phantom;
 using namespace phantom::util;
 

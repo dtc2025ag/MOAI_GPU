@@ -1,12 +1,17 @@
+#include "include.cuh"
+
 using namespace std;
-using namespace seal;
+using namespace std::chrono;
+using namespace phantom::util;
+using namespace phantom::arith;
+using namespace moai;
 
 
-vector<Ciphertext> ct_ct_matrix_mul_colpacking(const vector<Ciphertext> & enc_X, 
-  const vector<Ciphertext> & enc_W,  const GaloisKeys & RotK, const RelinKeys &relin_keys,
-  const SEALContext& seal_context, int col_X, int row_X, int col_W, int row_W, int num_batch){
+vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> & enc_X, 
+  vector<PhantomCiphertext> & enc_W,  PhantomGaloisKey & RotK, PhantomRelinKey &relin_keys,
+  PhantomContext& context, int col_X, int row_X, int col_W, int row_W, int num_batch){
 
-  vector<Ciphertext> output(row_X);
+  vector<PhantomCiphertext> output(row_X);
   double scale = enc_X[0].scale();
 
   if(col_X != col_W || row_X != row_W){
@@ -14,15 +19,17 @@ vector<Ciphertext> ct_ct_matrix_mul_colpacking(const vector<Ciphertext> & enc_X,
     return output;
   }
 
-  CKKSEncoder encoder(seal_context);
-  Evaluator evaluator(seal_context, encoder);
+  PhantomCKKSEncoder phantom_encoder(context);
+  //pack Phantom to SEAL style
+  Encoder encoder(&context, &phantom_encoder); 
+  Evaluator evaluator(&context, &phantom_encoder);
 
   
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0 ; i < row_X ; ++i){
-    vector<Ciphertext> copy_w(col_X);
+    vector<PhantomCiphertext> copy_w(col_X);
     for (int j = 0; j < col_X; ++j){
       copy_w[j] = enc_W[j];
       if(i > 0){
@@ -34,7 +41,7 @@ vector<Ciphertext> ct_ct_matrix_mul_colpacking(const vector<Ciphertext> & enc_X,
     //evaluator.rescale_to_next_inplace(output[i]);
 
     for(int j = 1 ; j < col_X ; ++j){
-      Ciphertext temp;
+      PhantomCiphertext temp;
       evaluator.multiply(enc_X[j], copy_w[j], temp);
       //evaluator.relinearize_inplace(temp,relin_keys);
       //evaluator.rescale_to_next_inplace(temp);
@@ -54,18 +61,19 @@ vector<Ciphertext> ct_ct_matrix_mul_colpacking(const vector<Ciphertext> & enc_X,
 
 }
 
-vector<Ciphertext> ct_ct_matrix_mul_diagpacking(const vector<Ciphertext> & enc_X, 
-  const vector<Ciphertext> & enc_W,  const GaloisKeys & RotK, const RelinKeys &relin_keys,
-  const SEALContext& seal_context, int col_X, int row_X, int col_W, int row_W, int num_batch){
+vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext> & enc_X, 
+  vector<PhantomCiphertext> & enc_W,  PhantomGaloisKey & RotK, PhantomRelinKey &relin_keys,
+  PhantomContext& context, int col_X, int row_X, int col_W, int row_W, int num_batch){
 
   //X: diag encoding
   //W: column encoding
 
-  CKKSEncoder encoder(seal_context);
-  Evaluator evaluator(seal_context, encoder);
+  PhantomCKKSEncoder phantom_encoder(context);
+  Encoder encoder(&context, &phantom_encoder);
+  Evaluator evaluator(&context, &phantom_encoder);
   double scale = enc_X[0].scale();
 
-  vector<Ciphertext> output(col_W);
+  vector<PhantomCiphertext> output(col_W);
 
   int g = sqrt((double)col_X);
   if(g * g < col_X){
@@ -78,10 +86,10 @@ vector<Ciphertext> ct_ct_matrix_mul_diagpacking(const vector<Ciphertext> & enc_X
   }
 
   //rotate X
-  
-  vector<Ciphertext> rot_enc_X(row_X);
 
-  #pragma omp parallel for 
+  vector<PhantomCiphertext> rot_enc_X(row_X);
+
+  // #pragma omp parallel for 
   
   for (int i = 0; i < b; ++i){
     for (int j = 0 ; j < g ; ++j){
@@ -102,11 +110,11 @@ vector<Ciphertext> ct_ct_matrix_mul_diagpacking(const vector<Ciphertext> & enc_X
   }
 
   //baby step + gaint step (col_w times)
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0 ; i < col_W ; ++i){
     //baby step
-    vector<Ciphertext> c_g(g,enc_W[i]);
+    vector<PhantomCiphertext> c_g(g,enc_W[i]);
 
     for (int j = 1 ; j < g ; ++j){
       evaluator.rotate_vector_inplace(c_g[j], j*num_batch, RotK);
@@ -114,7 +122,7 @@ vector<Ciphertext> ct_ct_matrix_mul_diagpacking(const vector<Ciphertext> & enc_X
     //cout <<"baby step. "<<endl;
 
     //gaint step
-    vector<Ciphertext> out(b);
+    vector<PhantomCiphertext> out(b);
     for(int j = 0 ; j < b ; ++j){
      // cout <<"j = "<<j<<endl;
       for(int k = 0 ; k < g ; ++k){
@@ -128,7 +136,7 @@ vector<Ciphertext> ct_ct_matrix_mul_diagpacking(const vector<Ciphertext> & enc_X
           //evaluator.rescale_to_next_inplace(out[j]);
         }
         else{
-          Ciphertext temp;
+          PhantomCiphertext temp;
           evaluator.multiply(c_g[k], rot_enc_X[index], temp);
           //evaluator.relinearize_inplace(temp,relin_keys);
           //evaluator.rescale_to_next_inplace(temp);

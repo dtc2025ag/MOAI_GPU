@@ -8,14 +8,15 @@
 #include <iostream>
 #include <string>
 
-#include "../../ckks_evaluator.cuh"
+// #include "../../ckks_evaluator.cuh"
+#include "../../ckks_evaluator_parallel.cuh"
 #include "func.cuh"
 #include "phantom.h"
 
 using namespace std;
 using namespace NTL;
 using namespace phantom;
-using namespace nexus;
+using namespace moai;
 
 namespace boot {
 class Polynomial {

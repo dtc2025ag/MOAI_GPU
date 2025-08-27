@@ -2,8 +2,10 @@
 
 #include <chrono>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
-namespace nexus {
+namespace moai {
 using namespace std;
 using namespace std::chrono;
 
@@ -41,4 +43,21 @@ class Timer {
     return duration_cast<T>(end_ - start_).count() / 1.0;
   }
 };
-}  // namespace nexus
+
+inline void append_csv_row(const std::string& path,
+                           const std::string& name,
+                           double time) {
+  bool need_header = !std::filesystem::exists(path);
+  std::ofstream ofs(path, std::ios::app);
+  if (!ofs) {
+    std::cerr << "Failed to open CSV: " << path << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (need_header) {
+    ofs << "name,time(s)\n";
+  }
+  ofs << std::fixed << std::setprecision(3)
+      << name << ","
+      << time << "\n";
+}
+}  // namespace moai

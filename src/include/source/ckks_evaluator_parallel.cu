@@ -1,12 +1,14 @@
 #include <iostream>
 
-#include "ckks_evaluator.cuh"
+// #include "ckks_evaluator.cuh"
+#include "ckks_evaluator_parallel.cuh"
 #include "phantom.h"
 #include "utils.cuh"
 
 using namespace phantom::arith;
 using namespace phantom::util;
-using namespace nexus;
+using namespace moai;
+// using namespace nexus;
 
 void CKKSEvaluator::print_decoded_pt(PhantomPlaintext &pt, int num) {
   vector<double> v;
@@ -462,7 +464,7 @@ PhantomCiphertext CKKSEvaluator::inverse(PhantomCiphertext x, int iter) {
   return res;
 }
 
-void nexus::Evaluator::add_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2) {
+void moai::Evaluator::add_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2, const cuda_stream_wrapper &stream_wrapper) {
   size_t encrypted1_coeff_modulus_size = encrypted1.coeff_modulus_size();
   size_t encrypted2_coeff_modulus_size = encrypted2.coeff_modulus_size();
 
@@ -503,7 +505,7 @@ void nexus::Evaluator::add_inplace_reduced_error(PhantomCiphertext &encrypted1, 
   }
 }
 
-void nexus::Evaluator::sub_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2) {
+void moai::Evaluator::sub_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2, const cuda_stream_wrapper &stream_wrapper) {
   size_t encrypted1_coeff_modulus_size = encrypted1.coeff_modulus_size();
   size_t encrypted2_coeff_modulus_size = encrypted2.coeff_modulus_size();
 
@@ -544,7 +546,7 @@ void nexus::Evaluator::sub_inplace_reduced_error(PhantomCiphertext &encrypted1, 
   }
 }
 
-void nexus::Evaluator::multiply_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2, const PhantomRelinKey &relin_keys) {
+void moai::Evaluator::multiply_inplace_reduced_error(PhantomCiphertext &encrypted1, const PhantomCiphertext &encrypted2, const PhantomRelinKey &relin_keys, const cuda_stream_wrapper &stream_wrapper) {
   size_t encrypted1_coeff_modulus_size = encrypted1.coeff_modulus_size();
   size_t encrypted2_coeff_modulus_size = encrypted2.coeff_modulus_size();
 
