@@ -90,29 +90,55 @@ include_directories(thirdparty/phantom-fhe/include)
 #   src/bootstrapping
 # )
 
-file(GLOB_RECURSE NEXUS_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
-  "scratch/test.cu"
-  "scratch/test_phantom_ckks.cuh"
-  "scratch/Ct_pt_matrix_mul.cuh"
-  "scratch/BatchEncoder.cuh"
-  "scratch/Ct_ct_matrix_mul.cuh"
-  "scratch/gelu_other.cuh"
-  "scratch/layernorm.cuh"
-  "scratch/softmax.cuh"
-  "scratch/test_batch_encode_encrypt.hpp"
-  "scratch/test_ct_pt_matrix_mul.cu"
-  "scratch/test_ct_ct_matrix_mul.cu"
-  "scratch/test_gelu.cuh"
-  "scratch/test_layernorm.cuh"
-  "scratch/test_softmax.cuh"
-  "scratch/test_single_layer.cuh"
-  "scratch/utils.cuh"
-  "scratch/utils_moai.cuh"
+# file(GLOB_RECURSE NEXUS_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
+#   "scratch/test.cu"
+#   "scratch/test_phantom_ckks.cuh"
+#   "scratch/Ct_pt_matrix_mul.cuh"
+#   "scratch/BatchEncoder.cuh"
+#   "scratch/Ct_ct_matrix_mul.cuh"
+#   "scratch/gelu_other.cuh"
+#   "scratch/layernorm.cuh"
+#   "scratch/softmax.cuh"
+#   "scratch/test_batch_encode_encrypt.hpp"
+#   "scratch/test_ct_pt_matrix_mul.cu"
+#   "scratch/test_ct_ct_matrix_mul.cu"
+#   "scratch/test_gelu.cuh"
+#   "scratch/test_layernorm.cuh"
+#   "scratch/test_softmax.cuh"
+#   "scratch/test_single_layer.cuh"
+#   "scratch/utils.cuh"
+#   "scratch/utils_moai.cuh"
+#   # "src/bootstrapping/*.cu"
+#   # "scratch/bootstrapping/*.cu"
+#   "scratch/bootstrapping.cu"
+#   "scratch/bootstrapping/*.cu"
+#   "scratch/ckks_evaluator_parallel.cu"
+#   "thirdparty/phantom-fhe/src/*.cu"
+# )
+
+file(GLOB_RECURSE MOAI_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
+  "src/test.cu"
+  "src/include/source/matrix_mul/Ct_pt_matrix_mul.cuh"
+  "src/include/source/matrix_mul/Batch_encode_encrypt.cuh"
+  "src/include/source/matrix_mul/Ct_ct_matrix_mul.cuh"
+  "src/include/source/non_linear_func/gelu_other.cuh"
+  "src/include/source/non_linear_func/layernorm.cuh"
+  "src/include/source/non_linear_func/softmax.cuh"
+  "src/include/test/test_phantom_ckks.cuh"
+  "src/include/test/matrix_mul/test_batch_encode_encrypt.hpp"
+  "src/include/test/matrix_mul/test_ct_pt_matrix_mul.cu"
+  "src/include/test/matrix_mul/test_ct_ct_matrix_mul.cu"
+  "src/include/test/non_linear_func/test_gelu.cuh"
+  "src/include/test/non_linear_func/test_layernorm.cuh"
+  "src/include/test/non_linear_func/test_softmax.cuh"
+  "src/include/test/test_single_layer.cuh"
+  "src/include/source/utils.cuh"
+  "src/include/source/utils_moai.cuh"
   # "src/bootstrapping/*.cu"
-  # "scratch/bootstrapping/*.cu"
-  "scratch/bootstrapping.cu"
-  "scratch/bootstrapping/*.cu"
-  "scratch/ckks_evaluator_parallel.cu"
+  # "src/bootstrapping/*.cu"
+  # "src/source/bootstrapping.cu"
+  "src/include/source/bootstrapping/*.cu"
+  "src/include/source/ckks_evaluator_parallel.cu"
   "thirdparty/phantom-fhe/src/*.cu"
 )
 
@@ -121,7 +147,8 @@ file(GLOB_RECURSE NEXUS_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
 
 
 
-add_executable(test ${NEXUS_CUDA_SOURCE_FILES})
+
+add_executable(test ${MOAI_CUDA_SOURCE_FILES})
 
 # 1) 找到 OpenMP
 find_package(OpenMP REQUIRED)
@@ -143,14 +170,16 @@ target_include_directories(test PRIVATE
   /usr/local/include/NTL
   # src/bootstrapping/common
   # src/bootstrapping
-  scratch
-  scratch/bootstrapping/common
-  scratch/bootstrapping
-
+  # scratch
+  # scratch/bootstrapping/common
+  # scratch/bootstrapping
+  ${CMAKE_SOURCE_DIR}/src/include/source/bootstrapping/common
+  ${CMAKE_SOURCE_DIR}/src/include/source/bootstrapping
+  ${CMAKE_SOURCE_DIR}/src/include
 )
 
 
 
-file(COPY "${CMAKE_SOURCE_DIR}/scratch/data/" DESTINATION "${CMAKE_BINARY_DIR}/")
+file(COPY "${CMAKE_SOURCE_DIR}/src/data/" DESTINATION "${CMAKE_BINARY_DIR}/")
 
 

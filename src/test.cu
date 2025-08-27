@@ -1,12 +1,12 @@
 #include "include.cuh"
-#include "test_ct_pt_matrix_mul.cuh"
-#include "test_phantom_ckks.cuh"
-#include "test_batch_encode_encrypt.cuh"
-#include "test_ct_ct_matrix_mul.cuh"
-#include "test_gelu.cuh"
-#include "test_layernorm.cuh"
-#include "test_softmax.cuh"
-#include "test_single_layer.cuh"
+// #include "test_ct_pt_matrix_mul.cuh"
+// #include "test_phantom_ckks.cuh"
+// #include "test_batch_encode_encrypt.cuh"
+// #include "test_ct_ct_matrix_mul.cuh"
+// #include "test_gelu.cuh"
+// #include "test_layernorm.cuh"
+// #include "test_softmax.cuh"
+// #include "test_single_layer.cuh"
 #include <cuda_runtime.h>
 using namespace std;
 using namespace phantom;

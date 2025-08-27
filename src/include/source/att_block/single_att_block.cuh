@@ -6,7 +6,7 @@
 // using namespace std;
 // using namespace seal;
 #include "include.cuh"
-#include "bootstrapping/Bootstrapper.cuh"
+// #include "bootstrapping/Bootstrapper.cuh"
 
 using namespace std;
 using namespace std::chrono;

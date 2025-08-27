@@ -3,7 +3,7 @@
 // #include "Bootstrapper.h"
 // #include "ckks_evaluator.h"
 #include "include.cuh"
-#include "bootstrapping/Bootstrapper.cuh"
+// #include "../bootstrapping/Bootstrapper.cuh"
 
 using namespace std;
 using namespace std::chrono;
