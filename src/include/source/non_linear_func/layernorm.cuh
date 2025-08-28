@@ -349,7 +349,7 @@ vector<PhantomCiphertext> layernorm(const vector<PhantomCiphertext> & x, const v
   vector<PhantomCiphertext> output(num_ct);
   evaluator.mod_switch_to_inplace(ave_x,inv_sqrt_var.params_id());
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num_ct; ++i){
     //cout<<i<<" ";
@@ -441,7 +441,7 @@ vector<PhantomCiphertext> layernorm2(vector<PhantomCiphertext> & x, vector<doubl
   encoder.encode(ecd_n,x[0].params_id(),x[0].scale(),d);
   vector<PhantomCiphertext> nx(num_ct);
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num_ct; ++i){
     nx[i] = x[i];
@@ -482,7 +482,7 @@ vector<PhantomCiphertext> layernorm2(vector<PhantomCiphertext> & x, vector<doubl
   //768 = 48*16, designed for multi-thread
   vector<PhantomCiphertext> temp_var(48);
   
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < 48; ++i){
     PhantomCiphertext temp_i;
@@ -557,7 +557,7 @@ vector<PhantomCiphertext> layernorm2(vector<PhantomCiphertext> & x, vector<doubl
   vector<PhantomCiphertext> output(num_ct);
   evaluator.mod_switch_to_inplace(ave_x,inv_sqrt_var.params_id());
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num_ct; ++i){
     //cout<<i<<" ";

@@ -14,22 +14,20 @@ using namespace phantom::arith;
 using namespace phantom::util;
 using namespace moai;
 
-
-
-int main() {
+int main()
+{
 
     // cout << "test Phantom ckks" << endl;
     // phantom_ckks_test();
     // cout << "lib test passed!" << endl;
-    
-    cout << "unit test: Batch encode and encrypt" << endl;
-    batch_input_test();
-    cout << "unit test Batch encode and encrypt passed!" << endl;
 
-    // cout << "unit test: Ct-pt matrix multiplication without preprocessing" << endl;
-    // ct_pt_matrix_mul_test();
-    // cout << "unit test passed!" << endl;
+    // cout << "unit test: Batch encode and encrypt" << endl;
+    // batch_input_test();
+    // cout << "unit test Batch encode and encrypt passed!" << endl;
 
+    cout << "unit test: Ct-pt matrix multiplication without preprocessing" << endl;
+    ct_pt_matrix_mul_test();
+    cout << "unit test passed!" << endl;
 
     // // cout << "unit test: Ct-pt matrix multiplication with preprocessing" << endl;
     // // ct_pt_matrix_mul_w_preprocess_test();

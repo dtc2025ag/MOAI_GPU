@@ -194,7 +194,7 @@ vector<PhantomCiphertext> softmax(vector<PhantomCiphertext> & enc_X, vector<int>
     }
   }
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num; ++i){
     exp_x[i] = exp(enc_x_minus[i],context,relin_keys);
@@ -369,7 +369,7 @@ vector<PhantomCiphertext> softmax(vector<PhantomCiphertext> & enc_X, vector<int>
   }
   cout <<endl;
 */
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num; ++i){
     evaluator.mod_switch_to_inplace(exp_x[i],inv_sum.params_id());
@@ -431,7 +431,7 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> & enc_X, vector
     }
   }
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num; ++i){
     enc_x_minus[i] = enc_X[i];
@@ -498,7 +498,7 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> & enc_X, vector
     }
   }
 
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num; ++i){
     exp_x[i] = exp(enc_x_minus[i],context,relin_keys);
@@ -661,7 +661,7 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> & enc_X, vector
   }
   cout <<endl;
 */
-  #pragma omp parallel for 
+  // #pragma omp parallel for 
 
   for (int i = 0; i < num; ++i){
     if(context.get_context_data(exp_x[i].params_id()).chain_depth()
