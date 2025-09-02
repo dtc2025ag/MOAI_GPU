@@ -6,7 +6,6 @@ using namespace phantom::util;
 using namespace phantom::arith;
 using namespace moai;
 
-
 /*
 inline std::string uint64_to_hex_string(std::uint64_t value)
 {
@@ -14,8 +13,9 @@ inline std::string uint64_to_hex_string(std::uint64_t value)
 }
 */
 #pragma once
-void phantom_ckks_test(){
-    cout <<"Task: test CKKS scheme in phantom library: "<<endl;
+void phantom_ckks_test()
+{
+    cout << "Task: test CKKS scheme in phantom library: " << endl;
 
     EncryptionParameters parms(scheme_type::ckks);
 
@@ -26,11 +26,11 @@ void phantom_ckks_test(){
     // parms.set_secret_key_hamming_weight(secret_key_hamming_weight);
     long sparse_slots = 16384;
     parms.set_sparse_slots(sparse_slots);
-    double scale = pow(2.0,40);
+    double scale = pow(2.0, 40);
 
     PhantomContext context(parms);
 
-    cout <<"Set encryption parameters and print"<<endl;
+    cout << "Set encryption parameters and print" << endl;
     print_parameters(context);
 
     // KeyGenerator keygen(context);
@@ -57,10 +57,8 @@ void phantom_ckks_test(){
 
     Decryptor decryptor(&context, &secret_key);
 
-    
     size_t slot_count = encoder.slot_count();
     cout << "Number of slots: " << slot_count << endl;
-
 
     // std::vector<std::vector<double>> x(4096, std::vector<double>(768, 0.0));
     // // nexus encoding check
@@ -78,7 +76,6 @@ void phantom_ckks_test(){
     // // cudaDeviceSynchronize();
     // cout << "[DEBUG] Encoding duration: " << encode_duration.count() << " ms" << endl;
     // return ;
-
 
     vector<double> input;
     input.reserve(slot_count);
@@ -109,11 +106,11 @@ void phantom_ckks_test(){
     cout << "Compute x^2 and relinearize:" << endl;
     evaluator.square(x1_encrypted, x3_encrypted);
     evaluator.relinearize_inplace(x3_encrypted, relin_keys);
-    cout << "    + Scale of x^2 before rescale: " << log2(x3_encrypted.scale())<< " bits" << endl;
+    cout << "    + Scale of x^2 before rescale: " << log2(x3_encrypted.scale()) << " bits" << endl;
 
     cout << "Rescale x^2." << endl;
     evaluator.rescale_to_next_inplace(x3_encrypted);
-    cout << "    + Scale of x^2 after rescale: " << log2(x3_encrypted.scale())<< " bits" << endl;
+    cout << "    + Scale of x^2 after rescale: " << log2(x3_encrypted.scale()) << " bits" << endl;
 
     cout << "Compute and rescale PI*x." << endl;
     PhantomCiphertext x1_encrypted_coeff3;
@@ -201,11 +198,3 @@ void phantom_ckks_test(){
     cout << "    + Computed result ...... Correct." << endl;
     print_vector(result, 3, 7);
 }
-
-
-
-
-
-
-
-

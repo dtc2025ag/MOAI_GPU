@@ -3,14 +3,29 @@
 #include "context.cuh"
 #include "polymath.cuh"
 
-class PhantomCiphertext {
+static inline bool safe_mul(size_t a, size_t b, size_t &out)
+{
+    if (a && b > std::numeric_limits<size_t>::max() / a)
+        return false;
+    out = a * b;
+    return true;
+}
+static inline bool safe_mul3(size_t a, size_t b, size_t c, size_t &out)
+{
+    size_t t;
+    if (!safe_mul(a, b, t))
+        return false;
+    return safe_mul(t, c, out);
+}
+
+class PhantomCiphertext
+{
 
     friend class PhantomPublicKey;
 
     friend class PhantomSecretKey;
 
 private:
-
     phantom::parms_id_type parms_id_ = phantom::parms_id_zero;
 
     // The index this ciphertext corresponding
@@ -41,7 +56,6 @@ private:
     phantom::util::cuda_auto_ptr<uint64_t> data_;
 
 public:
-
     PhantomCiphertext() = default;
 
     PhantomCiphertext(const PhantomCiphertext &) = default;
@@ -54,10 +68,21 @@ public:
 
     ~PhantomCiphertext() = default;
 
+    // 按 src 的形状与元数据重新初始化（不复制旧数据）
+    void reinit_like(size_t size, size_t coeff_modulus_size, size_t poly_modulus_degree, const cudaStream_t &stream)
+    {
+        data_ = phantom::util::make_cuda_auto_ptr<uint64_t>(size * coeff_modulus_size * poly_modulus_degree, stream);
+
+        size_ = size;
+        coeff_modulus_size_ = coeff_modulus_size;
+        poly_modulus_degree_ = poly_modulus_degree;
+    }
+
     /* Reset and malloc the ciphertext
      * @notice: when size is larger, the previous data is copied.
      */
-    void resize(const PhantomContext &context, size_t chain_index, size_t size, const cudaStream_t &stream) {
+    void resize(const PhantomContext &context, size_t chain_index, size_t size, const cudaStream_t &stream)
+    {
         auto &context_data = context.get_context_data(chain_index);
         auto &parms = context_data.parms();
         auto &coeff_modulus = parms.coeff_modulus();
@@ -67,12 +92,14 @@ public:
         size_t old_size = size_ * coeff_modulus_size_ * poly_modulus_degree_;
         size_t new_size = size * coeff_modulus_size * poly_modulus_degree;
 
-        if (new_size == 0) {
+        if (new_size == 0)
+        {
             data_.reset();
             return;
         }
 
-        if (new_size != old_size) {
+        if (new_size != old_size)
+        {
             auto prev_data(std::move(data_));
             data_ = phantom::util::make_cuda_auto_ptr<uint64_t>(size * coeff_modulus_size * poly_modulus_degree, stream);
             size_t copy_size = std::min(old_size, new_size);
@@ -87,7 +114,8 @@ public:
     }
 
     // Newly added
-    void resize(const PhantomContext &context, size_t chain_index, const cudaStream_t &stream) {
+    void resize(const PhantomContext &context, size_t chain_index, const cudaStream_t &stream)
+    {
         auto &context_data = context.get_context_data(chain_index);
         auto &parms = context_data.parms();
         auto &coeff_modulus = parms.coeff_modulus();
@@ -97,15 +125,17 @@ public:
         size_t old_size = size_ * coeff_modulus_size_ * poly_modulus_degree_;
         size_t new_size = size_ * coeff_modulus_size * poly_modulus_degree;
 
-        if (new_size == 0) {
+        if (new_size == 0)
+        {
             data_.reset();
             return;
         }
 
-        if (new_size != old_size) {
+        if (new_size != old_size)
+        {
             auto prev_data(std::move(data_));
             data_ = phantom::util::make_cuda_auto_ptr<uint64_t>(size_ * coeff_modulus_size * poly_modulus_degree, stream);
-            
+
             // Initialize the data to 0
             cudaMemsetAsync(data_.get(), 0, size_ * coeff_modulus_size * poly_modulus_degree * sizeof(uint64_t), stream);
 
@@ -119,16 +149,19 @@ public:
         coeff_modulus_size_ = coeff_modulus_size;
     }
 
-    void resize(size_t size, size_t coeff_modulus_size, size_t poly_modulus_degree, const cudaStream_t &stream) {
+    void resize(size_t size, size_t coeff_modulus_size, size_t poly_modulus_degree, const cudaStream_t &stream)
+    {
         size_t old_size = size_ * coeff_modulus_size_ * poly_modulus_degree_;
         size_t new_size = size * coeff_modulus_size * poly_modulus_degree;
 
-        if (new_size == 0) {
+        if (new_size == 0)
+        {
             data_.reset();
             return;
         }
 
-        if (new_size != old_size) {
+        if (new_size != old_size)
+        {
             auto prev_data(std::move(data_));
             data_ = phantom::util::make_cuda_auto_ptr<uint64_t>(size * coeff_modulus_size * poly_modulus_degree, stream);
             size_t copy_size = std::min(old_size, new_size);
@@ -141,93 +174,115 @@ public:
         poly_modulus_degree_ = poly_modulus_degree;
     }
 
-    void SetNoiseScaleDeg(size_t noiseScaleDeg) {
+    void SetNoiseScaleDeg(size_t noiseScaleDeg)
+    {
         noiseScaleDeg_ = noiseScaleDeg;
     }
 
-    void set_scale(double scale) {
+    void set_scale(double scale)
+    {
         scale_ = scale;
     }
 
-    void set_chain_index(std::size_t chain_index) {
+    void set_chain_index(std::size_t chain_index)
+    {
         chain_index_ = chain_index;
     }
 
-    void set_poly_modulus_degree(std::size_t poly_modulus_degree) {
+    void set_poly_modulus_degree(std::size_t poly_modulus_degree)
+    {
         poly_modulus_degree_ = poly_modulus_degree;
     }
 
-    void set_coeff_modulus_size(std::size_t coeff_modulus_size) {
+    void set_coeff_modulus_size(std::size_t coeff_modulus_size)
+    {
         coeff_modulus_size_ = coeff_modulus_size;
     }
 
-    void set_correction_factor(std::uint64_t correction_factor) {
+    void set_correction_factor(std::uint64_t correction_factor)
+    {
         correction_factor_ = correction_factor;
     }
 
-    void set_ntt_form(bool is_ntt_form) {
+    void set_ntt_form(bool is_ntt_form)
+    {
         is_ntt_form_ = is_ntt_form;
     }
 
-    [[nodiscard]] auto &size() const noexcept {
+    [[nodiscard]] auto &size() const noexcept
+    {
         return size_;
     }
 
-    [[nodiscard]] auto &GetNoiseScaleDeg() const {
+    [[nodiscard]] auto &GetNoiseScaleDeg() const
+    {
         return noiseScaleDeg_;
     }
 
-    [[nodiscard]] auto &is_ntt_form() const noexcept {
+    [[nodiscard]] auto &is_ntt_form() const noexcept
+    {
         return is_ntt_form_;
     }
 
-    [[nodiscard]] bool is_asymmetric() const noexcept {
+    [[nodiscard]] bool is_asymmetric() const noexcept
+    {
         return is_asymmetric_;
     }
 
-    [[nodiscard]] auto &parms_id() const noexcept {
+    [[nodiscard]] auto &parms_id() const noexcept
+    {
         return parms_id_;
     }
 
     // Newly added to provide a similar API to SEAL for getting context data
-    [[nodiscard]] std::size_t params_id() const noexcept {
+    [[nodiscard]] std::size_t params_id() const noexcept
+    {
         return chain_index_;
     }
 
-    [[nodiscard]] auto &chain_index() const noexcept {
+    [[nodiscard]] auto &chain_index() const noexcept
+    {
         return chain_index_;
     }
 
-    [[nodiscard]] auto &poly_modulus_degree() const noexcept {
+    [[nodiscard]] auto &poly_modulus_degree() const noexcept
+    {
         return poly_modulus_degree_;
     }
 
-    [[nodiscard]] auto &coeff_modulus_size() const noexcept {
+    [[nodiscard]] auto &coeff_modulus_size() const noexcept
+    {
         return coeff_modulus_size_;
     }
 
-    [[nodiscard]] auto &scale() const noexcept {
+    [[nodiscard]] auto &scale() const noexcept
+    {
         return scale_;
     }
 
     // Newly added to make scale easily modifiable
-    [[nodiscard]] auto &scale() noexcept {
+    [[nodiscard]] auto &scale() noexcept
+    {
         return scale_;
     }
 
-    [[nodiscard]] auto &correction_factor() const noexcept {
+    [[nodiscard]] auto &correction_factor() const noexcept
+    {
         return correction_factor_;
     }
 
-    [[nodiscard]] auto data() const {
+    [[nodiscard]] auto data() const
+    {
         return data_.get();
     }
 
-    [[nodiscard]] auto data(size_t poly_index) const {
+    [[nodiscard]] auto data(size_t poly_index) const
+    {
         return data_.get() + poly_index * (poly_modulus_degree_ * coeff_modulus_size_);
     }
 
-    [[nodiscard]] auto &data_ptr() {
+    [[nodiscard]] auto &data_ptr()
+    {
         return data_;
     }
 };

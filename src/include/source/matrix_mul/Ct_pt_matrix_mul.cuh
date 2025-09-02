@@ -107,7 +107,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
   if (enc_X.empty() || W.empty() || col_W <= 0 || row_W <= 0)
   {
     std::cout << "ERROR: empty inputs or bad dimensions.\n";
-    return output;
   }
   if (static_cast<int>(enc_X.size()) < row_W)
   {
@@ -169,6 +168,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)
     {
+
       // acc = enc_X[0] * W[0][i]
       PhantomPlaintext ecd_w_0_i;
       encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
@@ -212,12 +212,67 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
   return output;
 }
 
+// vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
+//                                            vector<vector<PhantomPlaintext>> &W, int col_X, int col_W, int row_W,
+//                                            PhantomContext &context)
+// {
+
+//   vector<PhantomCiphertext> output(col_W);
+
+//   if (col_X != row_W)
+//   {
+//     cout << "ERROR: bad dimensions of X or W. " << endl;
+//     return output;
+//   }
+
+//   // CKKSEncoder encoder(seal_context);
+//   // Evaluator evaluator(seal_context, encoder);
+//   PhantomCKKSEncoder phantom_encoder(context);
+//   // pack Phantom to SEAL style
+//   Encoder encoder(&context, &phantom_encoder);
+//   Evaluator evaluator(&context, &phantom_encoder);
+
+//   // #pragma omp parallel for
+
+//   for (int i = 0; i < col_W; ++i)
+//   {
+
+//     // encode w[0][i]
+//     // Plaintext ecd_w_0_i;
+//     // encoder.encode(W[0][i], scale, ecd_w_0_i);
+
+//     // enc_X[0]*ecd_w[0][i]
+//     evaluator.multiply_plain(enc_X[0], W[0][i], output[i]);
+//     // evaluator.rescale_to_next_inplace(output[i]);
+
+//     for (int j = 1; j < row_W; ++j)
+//     {
+//       // encode w[j][i]
+//       // Plaintext ecd_w_j_i;
+//       // encoder.encode(W[j][i], scale, ecd_w_j_i);
+
+//       // enc_X[j]*ecd_w[j][i]
+//       PhantomCiphertext temp;
+//       evaluator.multiply_plain(enc_X[j], W[j][i], temp);
+//       // evaluator.rescale_to_next_inplace(temp);
+//       evaluator.add_inplace(output[i], temp);
+//     }
+
+//     evaluator.rescale_to_next_inplace(output[i]);
+//   }
+
+//   return output;
+// }
+
+// CUDA_API_PER_THREAD_DEFAULT_STREAM=1
+
 vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
                                            vector<vector<PhantomPlaintext>> &W, int col_X, int col_W, int row_W,
                                            PhantomContext &context)
 {
 
-  vector<PhantomCiphertext> output(col_W);
+  // vector<PhantomCiphertext> output(col_W);
+  vector<PhantomCiphertext> output(static_cast<size_t>(col_W));
 
   if (col_X != row_W)
   {
@@ -225,42 +280,145 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     return output;
   }
 
-  // CKKSEncoder encoder(seal_context);
-  // Evaluator evaluator(seal_context, encoder);
-  PhantomCKKSEncoder phantom_encoder(context);
-  // pack Phantom to SEAL style
-  Encoder encoder(&context, &phantom_encoder);
-  Evaluator evaluator(&context, &phantom_encoder);
+  // 线程数：不超过列数（避免空转）
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, col_W));
+  // // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // #pragma omp parallel for
-
-  for (int i = 0; i < col_W; ++i)
+  // —— 准备每线程一个流（拥有型 wrapper） —— //
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
-
-    // encode w[0][i]
-    // Plaintext ecd_w_0_i;
-    // encoder.encode(W[0][i], scale, ecd_w_0_i);
-
-    // enc_X[0]*ecd_w[0][i]
-    evaluator.multiply_plain(enc_X[0], W[0][i], output[i]);
-    // evaluator.rescale_to_next_inplace(output[i]);
-
-    for (int j = 1; j < row_W; ++j)
+    stream_pool.reserve(nthreads);
+    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      // encode w[j][i]
-      // Plaintext ecd_w_j_i;
-      // encoder.encode(W[j][i], scale, ecd_w_j_i);
-
-      // enc_X[j]*ecd_w[j][i]
-      PhantomCiphertext temp;
-      evaluator.multiply_plain(enc_X[j], W[j][i], temp);
-      // evaluator.rescale_to_next_inplace(temp);
-      evaluator.add_inplace(output[i], temp);
+      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
     }
-
-    evaluator.rescale_to_next_inplace(output[i]);
+  }
+  if (nthreads == 1)
+  {
+    stream_pool[0] = *phantom::util::global_variables::default_stream;
   }
 
+  cudaEvent_t ev_start, ev_stop;
+  cudaEventCreate(&ev_start);
+  cudaEventCreate(&ev_stop);
+
+  // 可选：单独的计时流，避免用默认流 0
+  cudaStream_t timing_stream = nullptr;
+  cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
+  // CKKSEncoder encoder(seal_context);
+  // Evaluator evaluator(seal_context, encoder);
+  // PhantomCKKSEncoder phantom_encoder(context);
+  // // pack Phantom to SEAL style
+  // Encoder encoder(&context, &phantom_encoder);
+  // Evaluator evaluator(&context, &phantom_encoder);
+
+  // static std::mutex x_locks;
+// #pragma omp parallel for
+#pragma omp parallel num_threads(nthreads)
+  {
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+
+    // std::vector<PhantomCiphertext> X_local(row_W);
+    // for (int j = 0; j < row_W; ++j)
+    //   X_local[j] = enc_X[j];
+    // —— 关键：每线程仅拷贝一次 enc_X —— //
+    std::vector<PhantomCiphertext> X_local(static_cast<size_t>(row_W));
+    for (int j = 0; j < row_W; ++j)
+    {
+      // 若 multiply_plain / add_inplace 不会修改输入，可直接引用 enc_X[j] 而无需拷贝
+      X_local[static_cast<size_t>(j)] = deep_copy_cipher(enc_X[j], context, stream);
+    }
+
+    cudaStreamWaitEvent(stream.get_stream(), ev_start, 0);
+
+    // 确保所有线程都已经设置好 wait 之后再开枪
+#pragma omp barrier
+#pragma omp single
+    {
+      // 起跑枪：现在才开始计时，预处理不包含
+      cudaEventRecord(ev_start, timing_stream ? timing_stream : 0);
+    }
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < col_W; ++i)
+    {
+      // PhantomCiphertext x0 = deep_copy_cipher(enc_X[0], context, stream); // 建议用“深拷贝/clone”，别用浅拷贝别名
+      // PhantomPlaintext p0 = W[0][i];                                      // 同上：若是浅拷，只会继续竞态
+      PhantomCiphertext acc, temp;
+      // encode w[0][i]
+      // Plaintext ecd_w_0_i;
+      // encoder.encode(W[0][i], scale, ecd_w_0_i);
+
+      // enc_X[0]*ecd_w[0][i]
+      // std::lock_guard<std::mutex> g(x_locks);
+      evaluator_local.multiply_plain(X_local[0], W[0][i], acc, stream);
+      // evaluator_local.multiply_plain(x0, p0, acc, stream);
+      // evaluator_local.multiply_plain(enc_X[0], W[0][i], acc, stream);
+      // bridge_to_default(stream);
+      // evaluator.rescale_to_next_inplace(output[i]);
+
+      for (int j = 1; j < row_W; ++j)
+      {
+        // PhantomCiphertext xj = deep_copy_cipher(enc_X[j], context, stream); // 建议用“深拷贝/clone”，别用浅拷贝别名
+        // PhantomPlaintext pj = W[j][i];                                      // 同上：若是浅拷，只会继续竞态
+        // encode w[j][i]
+        // Plaintext ecd_w_j_i;
+        // encoder.encode(W[j][i], scale, ecd_w_j_i);
+
+        // enc_X[j]*ecd_w[j][i]
+        // PhantomCiphertext temp;
+        // evaluator_local.multiply_plain(enc_X[j], W[j][i], temp, stream);
+        // evaluator_local.multiply_plain(xj, pj, temp, stream);
+        evaluator_local.multiply_plain(X_local[j], W[j][i], temp, stream);
+        // evaluator.rescale_to_next_inplace(temp);
+        evaluator_local.add_inplace(acc, temp, stream);
+      }
+
+      evaluator_local.rescale_to_next_inplace(acc, stream);
+      // bridge_to_default(stream);
+      // cudaStreamSynchronize(stream.get_stream());
+      output[static_cast<size_t>(i)] = std::move(acc);
+    }
+    cudaStreamSynchronize(stream.get_stream());
+  }
+
+  // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
+  std::vector<cudaEvent_t> ev_done(nthreads);
+  for (int i = 0; i < nthreads; ++i)
+  {
+    cudaEventCreateWithFlags(&ev_done[i], cudaEventDisableTiming);
+    cudaEventRecord(ev_done[i], stream_pool[i].get_stream());
+  }
+
+  // 聚合所有 done 到计时流
+  for (int i = 0; i < nthreads; ++i)
+  {
+    cudaStreamWaitEvent(timing_stream ? timing_stream : 0, ev_done[i], 0);
+  }
+
+  // 记录 stop 并计算时间
+  cudaEventRecord(ev_stop, timing_stream ? timing_stream : 0);
+  cudaEventSynchronize(ev_stop);
+
+  float ms = 0.f;
+  cudaEventElapsedTime(&ms, ev_start, ev_stop);
+  cout << "Ct-Pt compute time = " << ms << " ms\n";
+
+  // 清理
+  for (auto &e : ev_done)
+    cudaEventDestroy(e);
+  cudaEventDestroy(ev_start);
+  cudaEventDestroy(ev_stop);
+  if (timing_stream)
+    cudaStreamDestroy(timing_stream);
+
+  // cudaDeviceSynchronize();
   return output;
 }
 

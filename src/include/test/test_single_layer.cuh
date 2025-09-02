@@ -1,7 +1,5 @@
 #include "include.cuh"
 
-
-
 using namespace std;
 using namespace phantom;
 using namespace moai;
@@ -13,343 +11,427 @@ const int num_inter = 3072;
 const double sqrt_d = 8.0;
 int num_input = 11;
 
-vector<vector<vector<double>>> input_x(num_X,vector<vector<double>>(num_row, vector<double>(num_col,0)));
+vector<vector<vector<double>>> input_x(num_X, vector<vector<double>>(num_row, vector<double>(num_col, 0)));
 
-//paras for attention block 
+// paras for attention block
 int col_W = 64;
 int num_head = 12;
 vector<vector<vector<double>>> WQ(num_head, vector<vector<double>>(num_col, vector<double>(col_W, 0.0)));
 vector<vector<vector<double>>> WK(num_head, vector<vector<double>>(num_col, vector<double>(col_W, 0.0)));
 vector<vector<vector<double>>> WV(num_head, vector<vector<double>>(num_col, vector<double>(col_W, 0.0)));
 
-vector<vector<double>> bQ(num_head,vector<double>(col_W,0.0));
-vector<vector<double>> bK(num_head,vector<double>(col_W,0.0));
-vector<vector<double>> bV(num_head,vector<double>(col_W,0.0));
+vector<vector<double>> bQ(num_head, vector<double>(col_W, 0.0));
+vector<vector<double>> bK(num_head, vector<double>(col_W, 0.0));
+vector<vector<double>> bV(num_head, vector<double>(col_W, 0.0));
 
-vector<vector<double>> selfoutput(num_col, vector<double>(num_col,0.0));
-vector<double> selfoutput_bias(num_col,0.0);
-vector<double> layernorm1_gamma(num_col,0.0);
-vector<double> layernorm1_beta(num_col,0.0);
+vector<vector<double>> selfoutput(num_col, vector<double>(num_col, 0.0));
+vector<double> selfoutput_bias(num_col, 0.0);
+vector<double> layernorm1_gamma(num_col, 0.0);
+vector<double> layernorm1_beta(num_col, 0.0);
 
-vector<vector<double>> inter_weight(num_col, vector<double>(num_inter,0.0));
-vector<double> inter_bias(num_inter,0.0);
-vector<vector<double>> final_weight(num_inter,vector<double>(num_col,0.0));
-vector<double> final_bias(num_col,0.0);
-vector<double> layernorm2_gamma(num_col,0.0);
-vector<double> layernorm2_beta(num_col,0.0);
+vector<vector<double>> inter_weight(num_col, vector<double>(num_inter, 0.0));
+vector<double> inter_bias(num_inter, 0.0);
+vector<vector<double>> final_weight(num_inter, vector<double>(num_col, 0.0));
+vector<double> final_bias(num_col, 0.0);
+vector<double> layernorm2_gamma(num_col, 0.0);
+vector<double> layernorm2_beta(num_col, 0.0);
 
-
-void read_input(){
+void read_input()
+{
     ifstream fin;
     fin.open("att_block_weights/embedded_inputs.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file embedded_inputs.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file embedded_inputs.txt" << endl;
     }
     char a;
-    //the test file has 11 input vectors, length of each vector = 768
-    
-    for (int i = 0; i < num_input; ++i){
-        for (int j = 0 ; j < num_col-1 ; ++j){
-            fin >>input_x[0][i][j];
-            fin >>a;
+    // the test file has 11 input vectors, length of each vector = 768
+
+    for (int i = 0; i < num_input; ++i)
+    {
+        for (int j = 0; j < num_col - 1; ++j)
+        {
+            fin >> input_x[0][i][j];
+            fin >> a;
         }
-        fin >>input_x[0][i][num_col-1];
+        fin >> input_x[0][i][num_col - 1];
     }
     fin.close();
-    //for test
-    //cout <<input_x[0][10][0]<<" "<<input_x[0][10][num_col-1]<<endl;
+    // for test
+    // cout <<input_x[0][10][0]<<" "<<input_x[0][10][num_col-1]<<endl;
 }
 
-void read_weights(){
+void read_weights()
+{
     ifstream fin;
-    //read matrix Q, size of Q = 12*64*768
+    // read matrix Q, size of Q = 12*64*768
     fin.open("att_block_weights/query_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file query_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file query_weight.txt" << endl;
     }
     char a;
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            for (int j = 0 ; j < num_col-1 ; ++j){
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            for (int j = 0; j < num_col - 1; ++j)
+            {
                 fin >> WQ[k][j][i];
-                fin >>a;
+                fin >> a;
             }
-            fin>>WQ[k][num_col-1][i];
+            fin >> WQ[k][num_col - 1][i];
         }
     }
-    
+
     fin.close();
-    //for test
-    //cout <<"WQ last element: "<<WQ[num_head-1][num_col-1][col_W-1]<<endl;
+    // for test
+    // cout <<"WQ last element: "<<WQ[num_head-1][num_col-1][col_W-1]<<endl;
 
-    //Q = Q/sqrt(d')
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < num_col; ++i){
-            for(int j = 0 ; j < col_W ; ++j){
-                WQ[k][i][j] = WQ[k][i][j]/sqrt_d;
+    // Q = Q/sqrt(d')
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < num_col; ++i)
+        {
+            for (int j = 0; j < col_W; ++j)
+            {
+                WQ[k][i][j] = WQ[k][i][j] / sqrt_d;
             }
         }
     }
 
-    //read matrix K
+    // read matrix K
     fin.open("att_block_weights/key_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file key_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file key_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            for (int j = 0 ; j < num_col-1 ; ++j){
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            for (int j = 0; j < num_col - 1; ++j)
+            {
                 fin >> WK[k][j][i];
-                fin >>a;
+                fin >> a;
             }
-            fin>>WK[k][num_col-1][i];
+            fin >> WK[k][num_col - 1][i];
         }
     }
     fin.close();
-    //for test
-    //cout <<"WK last element: "<<WK[num_head-1][num_col-1][col_W-1]<<endl;
+    // for test
+    // cout <<"WK last element: "<<WK[num_head-1][num_col-1][col_W-1]<<endl;
 
-    //read matrix V
+    // read matrix V
     fin.open("att_block_weights/value_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file value_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file value_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            for (int j = 0 ; j < num_col-1 ; ++j){
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            for (int j = 0; j < num_col - 1; ++j)
+            {
                 fin >> WV[k][j][i];
-                fin >>a;
+                fin >> a;
             }
-            fin>>WV[k][num_col-1][i];
+            fin >> WV[k][num_col - 1][i];
         }
     }
     fin.close();
-    //for test
-    //cout <<"WV last element: "<<WV[num_head-1][num_col-1][col_W-1]<<endl;
+    // for test
+    // cout <<"WV last element: "<<WV[num_head-1][num_col-1][col_W-1]<<endl;
 
-    //read self output weight
+    // read self output weight
     fin.open("self_output_weights/self_output_dense_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file self_output_dense_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file self_output_dense_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        for (int i = 0; i < num_col-1; ++i){
+    for (int k = 0; k < num_col; ++k)
+    {
+        for (int i = 0; i < num_col - 1; ++i)
+        {
             fin >> selfoutput[i][k];
-            fin >>a;
+            fin >> a;
         }
-        fin>>selfoutput[num_col-1][k];
+        fin >> selfoutput[num_col - 1][k];
     }
     fin.close();
-    //cout <<"selfoutput last element: "<<selfoutput[num_col-1][num_col-1]<<endl;
+    // cout <<"selfoutput last element: "<<selfoutput[num_col-1][num_col-1]<<endl;
 
-    //read layernorm1 weight
+    // read layernorm1 weight
     fin.open("self_output_weights/self_output_LayerNorm_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file self_output_LayerNorm_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file self_output_LayerNorm_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        fin>>layernorm1_gamma[k];
+    for (int k = 0; k < num_col; ++k)
+    {
+        fin >> layernorm1_gamma[k];
     }
     fin.close();
-    //cout <<"LayerNorm1 last element: "<<layernorm1_gamma[num_col-1]<<endl;
+    // cout <<"LayerNorm1 last element: "<<layernorm1_gamma[num_col-1]<<endl;
 }
 
-void read_bias(){
+void read_bias()
+{
     ifstream fin;
-    //read bias Q, size of Q = 64
+    // read bias Q, size of Q = 64
     fin.open("att_block_weights/query_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file query_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file query_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            fin>>bQ[k][i];
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            fin >> bQ[k][i];
         }
     }
     fin.close();
-    //for test
-    //cout <<"Q bias last element: "<<bQ[num_head-1][col_W-1]<<endl;
+    // for test
+    // cout <<"Q bias last element: "<<bQ[num_head-1][col_W-1]<<endl;
 
-    //bias Q = bias Q / sqrt_d'
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
+    // bias Q = bias Q / sqrt_d'
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
             bQ[k][i] = bQ[k][i] / sqrt_d;
         }
     }
 
     fin.open("att_block_weights/key_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file key_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file key_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            fin>>bK[k][i];
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            fin >> bK[k][i];
         }
     }
     fin.close();
-    //for test
-    //cout <<"K bias last element: "<<bK[num_head-1][col_W-1]<<endl;
+    // for test
+    // cout <<"K bias last element: "<<bK[num_head-1][col_W-1]<<endl;
 
     fin.open("att_block_weights/value_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file value_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file value_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_head ; ++k){
-        for (int i = 0; i < col_W; ++i){
-            fin>>bV[k][i];
+    for (int k = 0; k < num_head; ++k)
+    {
+        for (int i = 0; i < col_W; ++i)
+        {
+            fin >> bV[k][i];
         }
     }
     fin.close();
-    //for test
-    //cout <<"v bias last element: "<<bV[num_head-1][col_W-1]<<endl;
+    // for test
+    // cout <<"v bias last element: "<<bV[num_head-1][col_W-1]<<endl;
 
-    //read self output bias
+    // read self output bias
     fin.open("self_output_weights/self_output_dense_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file self_output_dense_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file self_output_dense_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        fin>>selfoutput_bias[k];
+    for (int k = 0; k < num_col; ++k)
+    {
+        fin >> selfoutput_bias[k];
     }
     fin.close();
-    //for test
-    //cout <<"selfoutput bias last element: "<<selfoutput_bias[num_col-1]<<endl;
+    // for test
+    // cout <<"selfoutput bias last element: "<<selfoutput_bias[num_col-1]<<endl;
 
-    //read layernorm1 weight
+    // read layernorm1 weight
     fin.open("self_output_weights/self_output_LayerNorm_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file self_output_LayerNorm_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file self_output_LayerNorm_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        fin>>layernorm1_beta[k];
+    for (int k = 0; k < num_col; ++k)
+    {
+        fin >> layernorm1_beta[k];
     }
     fin.close();
-    //cout <<"LayerNorm1 bias last element: "<<layernorm1_beta[num_col-1]<<endl;
+    // cout <<"LayerNorm1 bias last element: "<<layernorm1_beta[num_col-1]<<endl;
 }
 
-void read_feed_forward_param(){
+void read_feed_forward_param()
+{
     ifstream fin;
     char a;
-    //read inter weight
+    // read inter weight
     fin.open("feed_forward_weights/intermediate_dense_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file intermediate_dense_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file intermediate_dense_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_inter ; ++k){
-        for (int i = 0; i < num_col-1; ++i){
+    for (int k = 0; k < num_inter; ++k)
+    {
+        for (int i = 0; i < num_col - 1; ++i)
+        {
             fin >> inter_weight[i][k];
-            fin >>a;
+            fin >> a;
         }
-        fin>>inter_weight[num_col-1][k];
+        fin >> inter_weight[num_col - 1][k];
     }
     fin.close();
-    //cout <<"inter_weight last element: "<<inter_weight[num_col-1][num_inter-1]<<endl;
+    // cout <<"inter_weight last element: "<<inter_weight[num_col-1][num_inter-1]<<endl;
 
-    //read inter bias
+    // read inter bias
     fin.open("feed_forward_weights/intermediate_dense_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file intermediate_dense_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file intermediate_dense_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_inter ; ++k){
+    for (int k = 0; k < num_inter; ++k)
+    {
         fin >> inter_bias[k];
     }
     fin.close();
-    //cout <<"inter_bias last element: "<<inter_bias[num_inter-1]<<endl;
+    // cout <<"inter_bias last element: "<<inter_bias[num_inter-1]<<endl;
 
-    //read final weight
+    // read final weight
     fin.open("feed_forward_weights/final_output_dense_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file final_output_dense_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file final_output_dense_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        for (int i = 0; i < num_inter-1; ++i){
+    for (int k = 0; k < num_col; ++k)
+    {
+        for (int i = 0; i < num_inter - 1; ++i)
+        {
             fin >> final_weight[i][k];
-            fin >>a;
+            fin >> a;
         }
-        fin>>final_weight[num_inter-1][k];
+        fin >> final_weight[num_inter - 1][k];
     }
     fin.close();
-    //cout <<"final_weight last element: "<<final_weight[num_inter-1][num_col-1]<<endl;
+    // cout <<"final_weight last element: "<<final_weight[num_inter-1][num_col-1]<<endl;
 
-    //read final bias
+    // read final bias
     fin.open("feed_forward_weights/final_output_dense_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file final_output_dense_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file final_output_dense_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
+    for (int k = 0; k < num_col; ++k)
+    {
         fin >> final_bias[k];
     }
     fin.close();
-    //cout <<"final_bias last element: "<<final_bias[num_col-1]<<endl;
+    // cout <<"final_bias last element: "<<final_bias[num_col-1]<<endl;
 
-    //read layernorm2 weight
+    // read layernorm2 weight
     fin.open("feed_forward_weights/final_output_LayerNorm_weight.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file final_output_LayerNorm_weight.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file final_output_LayerNorm_weight.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        fin>>layernorm2_gamma[k];
+    for (int k = 0; k < num_col; ++k)
+    {
+        fin >> layernorm2_gamma[k];
     }
     fin.close();
-    //cout <<"LayerNorm2 weights last element: "<<layernorm2_gamma[num_col-1]<<endl;
+    // cout <<"LayerNorm2 weights last element: "<<layernorm2_gamma[num_col-1]<<endl;
 
-    //read layernorm2 bias
+    // read layernorm2 bias
     fin.open("feed_forward_weights/final_output_LayerNorm_bias.txt");
-    if(!fin.is_open()){
-        cout <<"Cannot open file final_output_LayerNorm_bias.txt"<<endl;
+    if (!fin.is_open())
+    {
+        cout << "Cannot open file final_output_LayerNorm_bias.txt" << endl;
     }
-    for(int k = 0 ; k < num_col ; ++k){
-        fin>>layernorm2_beta[k];
+    for (int k = 0; k < num_col; ++k)
+    {
+        fin >> layernorm2_beta[k];
     }
     fin.close();
-    //cout <<"LayerNorm2 bias last element: "<<layernorm2_beta[num_col-1]<<endl;
+    // cout <<"LayerNorm2 bias last element: "<<layernorm2_beta[num_col-1]<<endl;
 }
 
-void single_layer_test(){
-    cout <<"Task: test one layer of BERT in CKKS scheme: "<<endl;
+#include <set>
+std::vector<int> normalize_steps(const std::vector<int> &steps, int N)
+{
+    std::set<int> uniq; // 自动排序 + 去重
+
+    for (int k : steps)
+    {
+        // 先映射到 [0, N)
+        int t = ((k % N) + N) % N;
+
+        if (t == 0)
+            continue; // 0 对应恒等，不需要
+        if (t > N / 2)
+            t -= N; // 映射到 (-N/2, N/2]
+
+        if (t == -N / 2)
+            t = N / 2; // 统一成正代表
+        if (t < 0)
+            t = -t; // 只保留正代表（±k 等价）
+
+        uniq.insert(t);
+    }
+
+    // 转换为 vector
+    return std::vector<int>(uniq.begin(), uniq.end());
+}
+
+void single_layer_test()
+{
+    cout << "Task: test one layer of BERT in CKKS scheme: " << endl;
 
     read_input();
     read_weights();
     read_bias();
     read_feed_forward_param();
-    cout <<"Read input, weights, bias from txt files. "<<endl;
+    cout << "Read input, weights, bias from txt files. " << endl;
 
-    //bootstrapping parameters
+    // bootstrapping parameters
     long boundary_K = 25;
-  long deg = 59;
-  long scale_factor = 2;
-  long inverse_deg = 1;
+    long deg = 59;
+    long scale_factor = 2;
+    long inverse_deg = 1;
 
-  long logN = 15;
-  long loge = 10;
+    long logN = 15;
+    long loge = 10;
 
-  long logn = 14;
-  long sparse_slots = (1 << logn);
+    long logn = 14;
+    long sparse_slots = (1 << logn);
 
-  int logp = 46;
-  int logq = 51;
-  int log_special_prime = 58;
+    int logp = 46;
+    int logq = 51;
+    int log_special_prime = 58;
 
-  int secret_key_hamming_weight = 192;
+    int secret_key_hamming_weight = 192;
 
-  // Calculation required
-  int remaining_level_att = 15;
-  int boot_level = 14;  // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
-  int total_level_att = remaining_level_att + boot_level;
+    // Calculation required
+    int remaining_level_att = 15;
+    int boot_level = 14; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
+    int total_level_att = remaining_level_att + boot_level;
 
-  int remaining_level = 20;
-  int total_level = remaining_level + boot_level;
+    int remaining_level = 20;
+    int total_level = remaining_level + boot_level;
 
-  vector<int> coeff_bit_vec;
-  coeff_bit_vec.push_back(logq);
-  for (int i = 0; i < remaining_level; i++) {
-    coeff_bit_vec.push_back(logp);
-  }
-  for (int i = 0; i < boot_level; i++) {
+    vector<int> coeff_bit_vec;
     coeff_bit_vec.push_back(logq);
-  }
-  coeff_bit_vec.push_back(log_special_prime);
-
+    for (int i = 0; i < remaining_level; i++)
+    {
+        coeff_bit_vec.push_back(logp);
+    }
+    for (int i = 0; i < boot_level; i++)
+    {
+        coeff_bit_vec.push_back(logq);
+    }
+    coeff_bit_vec.push_back(log_special_prime);
 
     EncryptionParameters parms(scheme_type::ckks);
 
@@ -359,13 +441,13 @@ void single_layer_test(){
     parms.set_secret_key_hamming_weight(secret_key_hamming_weight);
     parms.set_sparse_slots(sparse_slots);
     double scale = pow(2.0, logp);
-    //parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40,40, 40,
-    //    40,40,40,40,40,40,40,40,40, 40,40,40,40,40,40,40,40,60}));
-    //double scale = pow(2.0,40);
+    // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40,40, 40,
+    //     40,40,40,40,40,40,40,40,40, 40,40,40,40,40,40,40,40,60}));
+    // double scale = pow(2.0,40);
 
     PhantomContext context(parms);
 
-    cout <<"Set encryption parameters and print"<<endl;
+    cout << "Set encryption parameters and print" << endl;
     print_parameters(context);
 
     // KeyGenerator keygen(context);
@@ -384,17 +466,14 @@ void single_layer_test(){
     // PhantomGaloisKey gal_keys = secret_key.create_galois_keys(context);
     PhantomGaloisKey gal_keys;
 
-
-
-    //end
-
+    // end
 
     // Encryptor encryptor(context, public_key);
     // Decryptor decryptor(context, secret_key);
     // CKKSEncoder encoder(context);
     // Evaluator evaluator(context, encoder);
     // size_t slot_count = encoder.slot_count();
-    //cout <<slot_count<<endl;
+    // cout <<slot_count<<endl;
     Encryptor encryptor(&context, &public_key);
     Decryptor decryptor(&context, &secret_key);
     // CKKSEncoder encoder(context);
@@ -404,82 +483,89 @@ void single_layer_test(){
     Evaluator evaluator(&context, &phantom_encoder);
     size_t slot_count = encoder.slot_count();
 
-
-    //prepare for bootstrapping
-    // Bootstrapper bootstrapper(
-    //   loge,
-    //   logn,
-    //   logN - 1,
-    //   total_level,
-    //   scale,
-    //   boundary_K,
-    //   deg,
-    //   scale_factor,
-    //   inverse_deg,
-    //   context,
-    //   keygen,
-    //   encoder,
-    //   encryptor,
-    //   decryptor,
-    //   evaluator,
-    //   relin_keys,
-    //   gal_keys_boot);
+    // prepare for bootstrapping
+    //  Bootstrapper bootstrapper(
+    //    loge,
+    //    logn,
+    //    logN - 1,
+    //    total_level,
+    //    scale,
+    //    boundary_K,
+    //    deg,
+    //    scale_factor,
+    //    inverse_deg,
+    //    context,
+    //    keygen,
+    //    encoder,
+    //    encryptor,
+    //    decryptor,
+    //    evaluator,
+    //    relin_keys,
+    //    gal_keys_boot);
 
     CKKSEvaluator ckks_evaluator(&context, &public_key, &secret_key, &phantom_encoder, &relin_keys, &gal_keys, scale);
 
     // add on Aug 18, save GPU memory
-    // vector<int> gal_vector;
-    // gal_vector.push_back(0);
-    // for (int i = 0; i < 32; ++i) {
-    //     gal_vector.push_back((i*num_X));
+    vector<int> gal_vector;
+    gal_vector.push_back(0);
+    for (int i = 0; i < 32; ++i)
+    {
+        gal_vector.push_back((i * num_X));
+        // cout << (i * num_X) << " ";
+    }
+
+    // gal_vector.push_back(0); // NEXUS
+    // for (int i = 0; i < logN - 1; i++)
+    // {
+    //     gal_vector.push_back((1 << i));
     // }
+
     // // keygen.create_galois_keys(gal_vector, gal_keys);
-    // ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_vector, gal_keys);
-    gal_keys = secret_key.create_galois_keys(context);
+    ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_vector, gal_keys);
+    // gal_keys = secret_key.create_galois_keys(context);
 
     Bootstrapper bootstrapper(
-    loge,
-    logn,
-    logN - 1,
-    total_level,
-    scale,
-    boundary_K,
-    deg,
-    scale_factor,
-    inverse_deg,
-    &ckks_evaluator);
+        loge,
+        logn,
+        logN - 1,
+        total_level,
+        scale,
+        boundary_K,
+        deg,
+        scale_factor,
+        inverse_deg,
+        &ckks_evaluator);
 
-//     cout << "preparing bootstrapping..." << endl;
-//     bootstrapper.prepare_mod_polynomial();
+    //     cout << "preparing bootstrapping..." << endl;
+    //     bootstrapper.prepare_mod_polynomial();
 
-//     //cout << "Adding Bootstrapping Keys..." << endl;
-//     vector<int> gal_steps_vector;
-//     gal_steps_vector.push_back(0);
-//     for (int i = 0; i < logN - 1; i++) {
-//         gal_steps_vector.push_back((1 << i));
-//     }
-//     bootstrapper.addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
+    //     //cout << "Adding Bootstrapping Keys..." << endl;
+    //     vector<int> gal_steps_vector;
+    //     gal_steps_vector.push_back(0);
+    //     for (int i = 0; i < logN - 1; i++) {
+    //         gal_steps_vector.push_back((1 << i));
+    //     }
+    //     bootstrapper.addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
 
-//     // keygen.create_galois_keys(gal_steps_vector, gal_keys_boot);
+    //     // keygen.create_galois_keys(gal_steps_vector, gal_keys_boot);
 
-//     ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
-//     std::cout << "Galois key generated from steps vector." << endl;
+    //     ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
+    //     std::cout << "Galois key generated from steps vector." << endl;
 
-//     bootstrapper.slot_vec.push_back(logn);
+    //     bootstrapper.slot_vec.push_back(logn);
 
-//   //cout << "Generating Linear Transformation Coefficients..." << endl;
-//   bootstrapper.generate_LT_coefficient_3();
-
+    //   //cout << "Generating Linear Transformation Coefficients..." << endl;
+    //   bootstrapper.generate_LT_coefficient_3();
 
     struct timeval tstart1, tend1;
- 
-    //encode + encrypt
-    vector<PhantomCiphertext> enc_ecd_x = batch_input(input_x, num_X, num_row, num_col, scale, context,public_key);
-    vector<int> input_len(num_X,0);
+
+    // encode + encrypt
+    vector<PhantomCiphertext> enc_ecd_x = batch_input(input_x, num_X, num_row, num_col, scale, context, public_key);
+    vector<int> input_len(num_X, 0);
     input_len[0] = 11;
-    vector <int> b_vec = bias_vec(input_len,num_X,num_row);
-    //cout <<"Matrix X size = "<<num_row <<" * "<<num_col<<endl;
-    //cout <<"Modulus chain index for x: "<< context.get_context_data(enc_ecd_x[0].parms_id())->chain_index()<<endl;
+    vector<int> b_vec = bias_vec(input_len, num_X, num_row);
+    // cout <<"Matrix X size = "<<num_row <<" * "<<num_col<<endl;
+    // cout <<"Modulus chain index for x: "<< context.get_context_data(enc_ecd_x[0].parms_id())->chain_index()<<endl;
 
     vector<vector<vector<double>>>().swap(input_x);
 
@@ -496,31 +582,35 @@ void single_layer_test(){
     //     }
     // }
 
-    //mod switch to remaining level
-    #pragma omp parallel for
+    // mod switch to remaining level
+    // #pragma omp parallel for
 
-    for (int i = 0; i < num_col; ++i) {
-        for (int j = 0; j < boot_level+(remaining_level- remaining_level_att); ++j){
+    for (int i = 0; i < num_col; ++i)
+    {
+        for (int j = 0; j < boot_level + (remaining_level - remaining_level_att); ++j)
+        {
             evaluator.mod_switch_to_next_inplace(enc_ecd_x[i]);
         }
     }
 
-    //mod switch to next level
-    #pragma omp parallel for
+    // mod switch to next level
+    // #pragma omp parallel for
 
-    for (int i = 0; i < num_col; ++i) {
+    for (int i = 0; i < num_col; ++i)
+    {
         evaluator.mod_switch_to_next_inplace(enc_ecd_x[i]);
     }
 
-    cout <<"Modulus chain index before attention block: "<< context.get_context_data(enc_ecd_x[0].params_id()).chain_depth()<<endl;
+    cout << "Modulus chain index before attention block: " << context.get_context_data(enc_ecd_x[0].params_id()).chain_depth() << endl;
 
     vector<vector<PhantomCiphertext>> att_block(num_head);
 
-    gettimeofday(&tstart1,NULL);
+    gettimeofday(&tstart1, NULL);
 
-    for (int i = 0; i < 1; ++i){
+    for (int i = 0; i < 1; ++i)
+    {
         att_block[i] = single_att_block(enc_ecd_x, WQ[i], WK[i], WV[i], bQ[i], bK[i], bV[i],
-         b_vec, num_input, context, relin_keys, gal_keys, bootstrapper, num_X, secret_key,16,10);
+                                        b_vec, num_input, context, relin_keys, gal_keys, bootstrapper, num_X, secret_key, 16, 10);
         /*
         cout <<"Decrypt + decode result of ";
         cout <<i+1<<"-th head: "<<endl;
@@ -539,11 +629,10 @@ void single_layer_test(){
         }
     */
     }
-    
 
-    gettimeofday(&tend1,NULL);
-    double att_block_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-    cout <<"Attention block time = "<<att_block_time<<endl;
+    gettimeofday(&tend1, NULL);
+    double att_block_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
+    cout << "Attention block time = " << att_block_time << endl;
     // cout <<"Modulus chain index for the result: "<< context.get_context_data(att_block[2][0].params_id()).chain_depth()<<endl;
 }
 
@@ -566,18 +655,17 @@ void single_layer_test(){
             cout <<endl;
         }
     }
-    
+
 
     cout <<endl;
-    
+
 */
-    //delete enc_ecd_x
+// delete enc_ecd_x
 //     vector<PhantomCiphertext>().swap(enc_ecd_x);
 
 //     gettimeofday(&tstart1,NULL);
 
 //     int output_size = att_block[0].size();
-
 
 //     vector<PhantomCiphertext> att_output(num_head*output_size);
 
@@ -662,8 +750,6 @@ void single_layer_test(){
 //     //    evaluator.mod_switch_to_next_inplace(rtn[i]);
 //     //}
 //     //cout <<"Modulus chain index before layernorm: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
-
-
 
 //     vector<PhantomCiphertext>().swap(att_selfoutput);
 
@@ -874,7 +960,6 @@ void single_layer_test(){
 //             gelu_output[i*32+j] = gelu_v2(inter_output[i*32+j],context,relin_keys,secret_key);
 //         }
 //     }
-    
 
 //     gettimeofday(&tend1,NULL);
 //     double gelu_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
@@ -896,14 +981,14 @@ void single_layer_test(){
 //             if(b_vec[ind] == 1){
 //                 cout <<result[ind]<<", ";
 //             }
-            
+
 //         //    else if(result[ind] >= 0.001){
 //         //        if(iscout == 0){
 //         //            cout <<"( "<<ind<<", "<<result[ind]<<"). ";
 //         //            iscout ++;
 //         //        }
 //         //    }
-            
+
 //         }
 //         cout <<endl;
 //     }
@@ -996,7 +1081,6 @@ void single_layer_test(){
 
 //     cout <<"LayerNorm start. "<<endl;
 //     gettimeofday(&tstart1,NULL);
-
 
 //     //rtn+enc_ecd_x_copy
 //     #pragma omp parallel for
@@ -1097,13 +1181,4 @@ void single_layer_test(){
 //     +boot_time+boot_time2+boot_time3+boot_time4;
 //     cout <<"Total time for one layer: "<<total_time<<", amortized time: "<<total_time/256.0<<endl;
 
-   
 // }
-
-
-
-
-
-
-
-

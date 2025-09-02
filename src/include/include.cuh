@@ -64,6 +64,37 @@ static inline void bridge_to_default(const cuda_stream_wrapper &sw)
     cudaEventDestroy(ev);                 // 等待已入队，销毁事件对象即可
 }
 
+PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
+                                   const PhantomContext &context,
+                                   phantom::util::cuda_stream_wrapper &stream = *phantom::util::global_variables::default_stream)
+{
+    PhantomCiphertext dst;
+
+    // 复制元数据
+    dst.set_chain_index(src.chain_index());
+    dst.set_poly_modulus_degree(src.poly_modulus_degree());
+    dst.set_coeff_modulus_size(src.coeff_modulus_size());
+    dst.set_scale(src.scale());
+    dst.set_correction_factor(src.correction_factor());
+    dst.set_ntt_form(src.is_ntt_form());
+    dst.SetNoiseScaleDeg(src.GetNoiseScaleDeg());
+
+    // 分配和源一样大小的缓冲
+    dst.reinit_like(src.size(),
+                    src.coeff_modulus_size(),
+                    src.poly_modulus_degree(),
+                    stream.get_stream());
+
+    // 真正拷贝显存数据
+    size_t count = src.size() * src.coeff_modulus_size() * src.poly_modulus_degree();
+    cudaMemcpyAsync(dst.data(), src.data(),
+                    count * sizeof(uint64_t),
+                    cudaMemcpyDeviceToDevice,
+                    stream.get_stream());
+
+    return dst;
+}
+
 // source code
 #include "source/bootstrapping/Bootstrapper.cuh"
 #include "source/utils.cuh"

@@ -25,17 +25,17 @@ int main()
     // batch_input_test();
     // cout << "unit test Batch encode and encrypt passed!" << endl;
 
-    cout << "unit test: Ct-pt matrix multiplication without preprocessing" << endl;
-    ct_pt_matrix_mul_test();
-    cout << "unit test passed!" << endl;
+    // cout << "unit test: Ct-pt matrix multiplication without preprocessing" << endl;
+    // ct_pt_matrix_mul_test();
+    // cout << "unit test passed!" << endl;
 
-    // // cout << "unit test: Ct-pt matrix multiplication with preprocessing" << endl;
-    // // ct_pt_matrix_mul_w_preprocess_test();
-    // // cout << "unit test passed!" << endl;
+    // cout << "unit test: Ct-pt matrix multiplication with preprocessing" << endl;
+    // ct_pt_matrix_mul_w_preprocess_test();
+    // cout << "unit test passed!" << endl;
 
-    // cout << "unit test: Ct-ct matrix multiplication" << endl;
-    // ct_ct_matrix_mul_test();
-    // cout << "unit test Ct-ct matrix multiplication passed!" << endl;
+    cout << "unit test: Ct-ct matrix multiplication" << endl;
+    ct_ct_matrix_mul_test();
+    cout << "unit test Ct-ct matrix multiplication passed!" << endl;
 
     // cout << "unit test: GeLU" << endl;
     // gelu_test();

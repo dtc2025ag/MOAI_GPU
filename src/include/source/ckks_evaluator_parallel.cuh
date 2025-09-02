@@ -123,7 +123,7 @@ namespace moai
     inline void encrypt(PhantomPlaintext &plain, PhantomCiphertext &ct,
                         const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper; // 暂未向下传递，预留参数
+      // 暂未向下传递，预留参数
       encryptor->encrypt_asymmetric(*context, plain, ct, stream_wrapper);
     }
   };
@@ -144,7 +144,7 @@ namespace moai
   //
   //   inline void encrypt(PhantomPlaintext &plain, PhantomCiphertext &ct,
   //                       const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream) {
-  //     (void)stream_wrapper;
+  //
   //     encryptor->encrypt_symmetric(*context, plain, ct);
   //   }
   // };
@@ -167,28 +167,28 @@ namespace moai
     inline void mod_switch_to_next_inplace(PhantomCiphertext &ct,
                                            const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::mod_switch_to_next_inplace(*context, ct);
     }
 
     inline void mod_switch_to_inplace(PhantomCiphertext &ct, size_t chain_index,
                                       const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::mod_switch_to_inplace(*context, ct, chain_index);
     }
 
     inline void mod_switch_to_inplace(PhantomPlaintext &pt, size_t chain_index,
                                       const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::mod_switch_to_inplace(*context, pt, chain_index);
     }
 
     inline void rescale_to_next_inplace(PhantomCiphertext &ct,
                                         const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::rescale_to_next_inplace(*context, ct, stream_wrapper);
     }
 
@@ -196,8 +196,8 @@ namespace moai
     inline void relinearize_inplace(PhantomCiphertext &ct, const PhantomRelinKey &relin_keys,
                                     const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      ::relinearize_inplace(*context, ct, relin_keys);
+
+      ::relinearize_inplace(*context, ct, relin_keys, stream_wrapper);
     }
 
     // Multiplication
@@ -230,14 +230,14 @@ namespace moai
     inline void multiply_inplace(PhantomCiphertext &ct1, const PhantomCiphertext &ct2,
                                  const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      ::multiply_inplace(*context, ct1, ct2);
+
+      ::multiply_inplace(*context, ct1, ct2, stream_wrapper);
     }
 
     inline void multiply_plain(PhantomCiphertext &ct, PhantomPlaintext &plain, PhantomCiphertext &dest,
                                const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       // ::mod_switch_to_inplace(*context, plain, ct.params_id());
       // dest = ct;
       // ::multiply_plain_inplace(*context, dest, plain);
@@ -247,36 +247,36 @@ namespace moai
     inline void multiply_plain_inplace(PhantomCiphertext &ct, PhantomPlaintext &plain,
                                        const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      ::multiply_plain_inplace(*context, ct, plain);
+
+      ::multiply_plain_inplace(*context, ct, plain, stream_wrapper);
     }
 
     // Addition
     inline void add_plain(const PhantomCiphertext &ct, PhantomPlaintext &plain, PhantomCiphertext &dest,
                           const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      dest = ::add_plain(*context, ct, plain);
+
+      dest = ::add_plain(*context, ct, plain, stream_wrapper);
     }
 
     inline void add_plain_inplace(PhantomCiphertext &ct, PhantomPlaintext &plain,
                                   const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      ::add_plain_inplace(*context, ct, plain);
+
+      ::add_plain_inplace(*context, ct, plain, stream_wrapper);
     }
 
     inline void add(PhantomCiphertext &ct1, const PhantomCiphertext &ct2, PhantomCiphertext &dest,
                     const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      dest = ::add(*context, ct1, ct2);
+
+      dest = ::add(*context, ct1, ct2, stream_wrapper);
     }
 
     inline void add_inplace(PhantomCiphertext &ct1, const PhantomCiphertext &ct2,
                             const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::add_inplace(*context, ct1, ct2, stream_wrapper);
     }
 
@@ -305,7 +305,7 @@ namespace moai
     inline void sub_plain_inplace(PhantomCiphertext &ct, PhantomPlaintext &plain,
                                   const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::sub_plain_inplace(*context, ct, plain);
     }
 
@@ -327,7 +327,7 @@ namespace moai
     inline void sub_inplace(PhantomCiphertext &ct1, const PhantomCiphertext &ct2,
                             const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::sub_inplace(*context, ct1, ct2);
     }
 
@@ -335,16 +335,16 @@ namespace moai
     inline void rotate_vector(PhantomCiphertext &ct, int steps, PhantomGaloisKey &galois_keys, PhantomCiphertext &dest,
                               const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      dest = ::rotate_vector(*context, ct, steps, galois_keys);
+
+      dest = ::rotate_vector(*context, ct, steps, galois_keys, stream_wrapper);
       cudaStreamSynchronize(ct.data_ptr().get_stream()); // 当前仍需要
     }
 
     inline void rotate_vector_inplace(PhantomCiphertext &ct, int steps, PhantomGaloisKey &galois_keys,
                                       const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
-      ::rotate_vector_inplace(*context, ct, steps, galois_keys);
+
+      ::rotate_vector_inplace(*context, ct, steps, galois_keys, stream_wrapper);
       cudaStreamSynchronize(ct.data_ptr().get_stream()); // 当前仍需要
     }
 
@@ -359,7 +359,7 @@ namespace moai
     inline void negate_inplace(PhantomCiphertext &ct,
                                const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::negate_inplace(*context, ct);
     }
 
@@ -367,14 +367,14 @@ namespace moai
     inline void apply_galois(PhantomCiphertext &ct, uint32_t elt, PhantomGaloisKey &galois_keys, PhantomCiphertext &dest,
                              const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       dest = ::apply_galois(*context, ct, elt, galois_keys);
     }
 
     inline void apply_galois_inplace(PhantomCiphertext &ct, int step, PhantomGaloisKey &galois_keys,
                                      const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       auto elt = context->key_galois_tool_->get_elt_from_step(step);
       ::apply_galois_inplace(*context, ct, elt, galois_keys);
     }
@@ -390,7 +390,7 @@ namespace moai
     inline void complex_conjugate_inplace(PhantomCiphertext &ct, const PhantomGaloisKey &galois_keys,
                                           const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       ::complex_conjugate_inplace(*context, ct, galois_keys);
     }
 
@@ -405,7 +405,7 @@ namespace moai
     inline void transform_from_ntt_inplace(PhantomCiphertext &ct,
                                            const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       auto rns_coeff_count = ct.poly_modulus_degree() * ct.coeff_modulus_size();
 
       const auto stream = ct.data_ptr().get_stream();
@@ -429,7 +429,7 @@ namespace moai
     inline void transform_to_ntt_inplace(PhantomCiphertext &ct,
                                          const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       auto rns_coeff_count = ct.poly_modulus_degree() * ct.coeff_modulus_size();
       const auto stream = ct.data_ptr().get_stream();
 
@@ -526,7 +526,7 @@ namespace moai
     inline void double_inplace(PhantomCiphertext &ct,
                                const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream) const
     {
-      (void)stream_wrapper;
+
       ::add_inplace(*context, ct, ct);
     }
 
@@ -580,21 +580,21 @@ namespace moai
     inline void decrypt(PhantomCiphertext &ct, PhantomPlaintext &plain,
                         const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       decryptor->decrypt(*context, ct, plain);
     }
 
     inline void create_galois_keys_from_steps(vector<int> &steps, PhantomGaloisKey &galois_keys,
                                               const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       galois_keys = decryptor->create_galois_keys_from_steps(*context, steps);
     }
 
     inline void create_galois_keys_from_elts(vector<uint32_t> &elts, PhantomGaloisKey &galois_keys,
                                              const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      (void)stream_wrapper;
+
       galois_keys = decryptor->create_galois_keys_from_elts(*context, elts);
     }
   };
