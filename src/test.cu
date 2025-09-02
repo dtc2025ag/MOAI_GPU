@@ -33,9 +33,9 @@ int main()
     // ct_pt_matrix_mul_w_preprocess_test();
     // cout << "unit test passed!" << endl;
 
-    cout << "unit test: Ct-ct matrix multiplication" << endl;
-    ct_ct_matrix_mul_test();
-    cout << "unit test Ct-ct matrix multiplication passed!" << endl;
+    // cout << "unit test: Ct-ct matrix multiplication" << endl;
+    // ct_ct_matrix_mul_test();
+    // cout << "unit test Ct-ct matrix multiplication passed!" << endl;
 
     // cout << "unit test: GeLU" << endl;
     // gelu_test();
@@ -45,9 +45,9 @@ int main()
     // layernorm_test();
     // cout << "unit test passed!" << endl;
 
-    // cout << "unit test: Softmax" << endl;
-    // softmax_test();
-    // cout << "unit test passed!" << endl;
+    cout << "unit test: Softmax" << endl;
+    softmax_test();
+    cout << "unit test passed!" << endl;
 
     // cout << "unit test: softmax with bootstrapping" << endl;
     // softmax_boot_test();

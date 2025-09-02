@@ -175,7 +175,7 @@ namespace moai
                                       const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
 
-      ::mod_switch_to_inplace(*context, ct, chain_index);
+      ::mod_switch_to_inplace(*context, ct, chain_index, stream_wrapper);
     }
 
     inline void mod_switch_to_inplace(PhantomPlaintext &pt, size_t chain_index,
@@ -360,7 +360,7 @@ namespace moai
                                const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
 
-      ::negate_inplace(*context, ct);
+      ::negate_inplace(*context, ct, stream_wrapper);
     }
 
     // Galois
