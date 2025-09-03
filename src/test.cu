@@ -41,13 +41,13 @@ int main()
     // gelu_test();
     // cout << "unit test passed!" << endl;
 
-    // cout << "unit test: LayerNorm" << endl;
-    // layernorm_test();
-    // cout << "unit test passed!" << endl;
-
-    cout << "unit test: Softmax" << endl;
-    softmax_test();
+    cout << "unit test: LayerNorm" << endl;
+    layernorm_test();
     cout << "unit test passed!" << endl;
+
+    // cout << "unit test: Softmax" << endl;
+    // softmax_test();
+    // cout << "unit test passed!" << endl;
 
     // cout << "unit test: softmax with bootstrapping" << endl;
     // softmax_boot_test();
