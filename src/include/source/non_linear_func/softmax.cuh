@@ -576,77 +576,111 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> &enc_X, vector<
     }
   }
 
-  // #pragma omp parallel for
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, num));
 
-  for (int i = 0; i < num; ++i)
+  // —— 准备每线程一个流（拥有型 wrapper） —— //
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
-    exp_x[i] = exp(enc_x_minus[i], context, relin_keys);
-
-    // for slot with value 0, times 0
-    // case 0: first line
-    if (i == 0)
+    stream_pool.reserve(nthreads);
+    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      PhantomPlaintext one;
-      encoder.encode(s1, exp_x[i].scale(), one);
-      evaluator.mod_switch_to_inplace(one, exp_x[i].params_id());
-      evaluator.multiply_plain_inplace(exp_x[i], one);
-      evaluator.rescale_to_next_inplace(exp_x[i]);
+      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
     }
-    // case1: all zero row
-    else if (i > input_num && i <= (num - input_num))
-    {
-      PhantomPlaintext one;
-      encoder.encode(0, exp_x[i].scale(), one);
-      evaluator.mod_switch_to_inplace(one, exp_x[i].params_id());
-      evaluator.multiply_plain_inplace(exp_x[i], one);
-      evaluator.rescale_to_next_inplace(exp_x[i]);
-    }
-    // case2: 0 - input_num line
-    else if (i <= input_num)
-    {
-      vector<double> temps1(slot_count, 0);
-      int index = num_batch * (input_num - i);
-      for (int i = 0; i < slot_count; ++i)
-      {
-        if (bias_vec[i] == 1 && i < index)
-        {
-          temps1[i] = 1;
-        }
-      }
-      // cout <<index/num<<endl;
-      // s1[index] = 1;
-      PhantomPlaintext one;
-      encoder.encode(temps1, exp_x[i].scale(), one);
-      evaluator.mod_switch_to_inplace(one, exp_x[i].params_id());
-      evaluator.multiply_plain_inplace(exp_x[i], one);
-      evaluator.rescale_to_next_inplace(exp_x[i]);
-    }
-    // case3: num-input - num line
-    else if (i > num - input_num)
-    {
-      vector<double> temps1(slot_count, 0);
-      int index = (num - i) * num_batch;
-      for (int i = 0; i < slot_count; ++i)
-      {
-        if (bias_vec[i] == 1 && i >= index)
-        {
-          // cout <<i<<endl;
-          temps1[i] = 1;
-        }
-      }
-      // cout <<index/num<<endl;
-      // s1[index] = 0;
-      PhantomPlaintext one;
-      encoder.encode(temps1, exp_x[i].scale(), one);
-      evaluator.mod_switch_to_inplace(one, exp_x[i].params_id());
-      evaluator.multiply_plain_inplace(exp_x[i], one);
-      evaluator.rescale_to_next_inplace(exp_x[i]);
-    }
-    // else{
-    //   cout <<"ERROR in computing e^x. "<<endl;
-    // }
-    exp_x[i].scale() = scale;
   }
+  if (nthreads == 1)
+  {
+    stream_pool[0] = *phantom::util::global_variables::default_stream;
+  }
+
+  // #pragma omp parallel for
+#pragma omp parallel num_threads(nthreads)
+  {
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < num; ++i)
+    {
+      PhantomCiphertext enc_x_minus_i = deep_copy_cipher(enc_x_minus[i], context, stream);
+      exp_x[i] = exp(enc_x_minus_i, context, relin_keys, stream);
+
+      // for slot with value 0, times 0
+      // case 0: first line
+      if (i == 0)
+      {
+        PhantomPlaintext one;
+        encoder_local.encode(s1, exp_x[i].scale(), one, stream);
+        bridge_to_default(stream);
+        evaluator_local.mod_switch_to_inplace(one, exp_x[i].params_id(), stream);
+        evaluator_local.multiply_plain_inplace(exp_x[i], one, stream);
+        evaluator_local.rescale_to_next_inplace(exp_x[i], stream);
+      }
+      // case1: all zero row
+      else if (i > input_num && i <= (num - input_num))
+      {
+        PhantomPlaintext one;
+        encoder_local.encode(0, exp_x[i].scale(), one, stream);
+        bridge_to_default(stream);
+        evaluator_local.mod_switch_to_inplace(one, exp_x[i].params_id(), stream);
+        evaluator_local.multiply_plain_inplace(exp_x[i], one, stream);
+        evaluator_local.rescale_to_next_inplace(exp_x[i], stream);
+      }
+      // case2: 0 - input_num line
+      else if (i <= input_num)
+      {
+        vector<double> temps1(slot_count, 0);
+        int index = num_batch * (input_num - i);
+        for (int i = 0; i < slot_count; ++i)
+        {
+          if (bias_vec[i] == 1 && i < index)
+          {
+            temps1[i] = 1;
+          }
+        }
+        // cout <<index/num<<endl;
+        // s1[index] = 1;
+        PhantomPlaintext one;
+        encoder_local.encode(temps1, exp_x[i].scale(), one, stream);
+        bridge_to_default(stream);
+        evaluator_local.mod_switch_to_inplace(one, exp_x[i].params_id(), stream);
+        evaluator_local.multiply_plain_inplace(exp_x[i], one, stream);
+        evaluator_local.rescale_to_next_inplace(exp_x[i], stream);
+      }
+      // case3: num-input - num line
+      else if (i > num - input_num)
+      {
+        vector<double> temps1(slot_count, 0);
+        int index = (num - i) * num_batch;
+        for (int i = 0; i < slot_count; ++i)
+        {
+          if (bias_vec[i] == 1 && i >= index)
+          {
+            // cout <<i<<endl;
+            temps1[i] = 1;
+          }
+        }
+        // cout <<index/num<<endl;
+        // s1[index] = 0;
+        PhantomPlaintext one;
+        encoder_local.encode(temps1, exp_x[i].scale(), one, stream);
+        bridge_to_default(stream);
+        evaluator_local.mod_switch_to_inplace(one, exp_x[i].params_id(), stream);
+        evaluator_local.multiply_plain_inplace(exp_x[i], one, stream);
+        evaluator_local.rescale_to_next_inplace(exp_x[i], stream);
+      }
+      // else{
+      //   cout <<"ERROR in computing e^x. "<<endl;
+      // }
+      exp_x[i].scale() = scale;
+    }
+    cudaStreamSynchronize(stream.get_stream());
+  }
+
   /*
   //cout <<"    Modulus chain for e^x: "<< seal_context.get_context_data(exp_x[0].parms_id()).chain_depth()<<endl;
   //cout <<"    Modulus chain for e^x should >= 3"<<endl;
@@ -750,19 +784,30 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> &enc_X, vector<
     cout <<endl;
   */
   // #pragma omp parallel for
-
-  for (int i = 0; i < num; ++i)
+#pragma omp parallel num_threads(nthreads)
   {
-    if (context.get_context_data(exp_x[i].params_id()).chain_depth() > context.get_context_data(inv_sum.params_id()).chain_depth())
-    {
-      evaluator.mod_switch_to_inplace(exp_x[i], inv_sum.params_id());
-    }
-    evaluator.multiply(exp_x[i], inv_sum, output[i]);
-    evaluator.relinearize_inplace(output[i], relin_keys);
-    evaluator.rescale_to_next_inplace(output[i]);
-    output[i].scale() = scale;
-  }
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < num; ++i)
+    {
+      if (context.get_context_data(exp_x[i].params_id()).chain_depth() > context.get_context_data(inv_sum.params_id()).chain_depth())
+      {
+        evaluator_local.mod_switch_to_inplace(exp_x[i], inv_sum.params_id(), stream);
+      }
+      evaluator_local.multiply(exp_x[i], inv_sum, output[i], stream);
+      evaluator_local.relinearize_inplace(output[i], relin_keys, stream);
+      evaluator_local.rescale_to_next_inplace(output[i], stream);
+      output[i].scale() = scale;
+    }
+    cudaStreamSynchronize(stream.get_stream());
+  }
   return output;
 }
 
