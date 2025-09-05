@@ -114,6 +114,7 @@ PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
 #include "test/matrix_mul/test_ct_ct_matrix_mul.cuh"
 #include "test/non_linear_func/test_gelu.cuh"
 #include "test/non_linear_func/test_layernorm.cuh"
+#include "test/bootstrapping/bootstrapping.cuh"
 #include "test/non_linear_func/test_softmax.cuh"
 #include "test/test_single_layer.cuh"
 
