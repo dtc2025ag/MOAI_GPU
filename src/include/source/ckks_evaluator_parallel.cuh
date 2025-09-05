@@ -407,7 +407,8 @@ namespace moai
     {
 
       auto rns_coeff_count = ct.poly_modulus_degree() * ct.coeff_modulus_size();
-
+      if (stream_wrapper.get_stream() != ct.data_ptr().get_stream())
+        throw invalid_argument("stream_wrapper and ct must have the same stream");
       const auto stream = ct.data_ptr().get_stream();
 
       for (size_t i = 0; i < ct.size(); i++)

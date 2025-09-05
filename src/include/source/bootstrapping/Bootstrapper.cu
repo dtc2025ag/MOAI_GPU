@@ -11,14 +11,16 @@ Bootstrapper::Bootstrapper(
     long _scale_factor,
     long _inverse_deg,
     CKKSEvaluator *_ckks)
-    : loge(_loge), logn(_logn), logNh(_logNh), L(_L), final_scale(_final_scale), boundary_K(_boundary_K), sin_cos_deg(_sin_cos_deg), scale_factor(_scale_factor), inverse_deg(_inverse_deg), ckks(_ckks) {
+    : loge(_loge), logn(_logn), logNh(_logNh), L(_L), final_scale(_final_scale), boundary_K(_boundary_K), sin_cos_deg(_sin_cos_deg), scale_factor(_scale_factor), inverse_deg(_inverse_deg), ckks(_ckks)
+{
   n = 1 << logn;
   Nh = 1 << logNh;
   mod_reducer =
       new ModularReducer(boundary_K, (double)loge, sin_cos_deg, scale_factor, inverse_deg, ckks);
 }
 
-void Bootstrapper::addLeftRotKeys_Linear_to_vector(vector<int> &gal_steps_vector) {
+void Bootstrapper::addLeftRotKeys_Linear_to_vector(vector<int> &gal_steps_vector)
+{
   int split_point = floor(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -34,52 +36,69 @@ void Bootstrapper::addLeftRotKeys_Linear_to_vector(vector<int> &gal_steps_vector
   int giantlast2 = floor((totlen2 + 0.0) / (gs2 + 0.0));
   int basicstep = (1 << split_point);
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i) % Nh);
       }
     }
   }
 
-  for (int i = basicstart2_e; i < basicstart2_e + gs2_e; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart2_e; i < basicstart2_e + gs2_e; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep) % Nh);
       }
     }
   }
 
-  for (int i = 1; i < gs2; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep) == gal_steps_vector.end()) {
+  for (int i = 1; i < gs2; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * basicstep);
     }
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs1) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst2_e; i <= giantlast2_e; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2_e * basicstep) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst2_e; i <= giantlast2_e; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2_e * basicstep) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs2_e * basicstep) % Nh);
       }
     }
   }
 
-  for (int i = 1; i <= giantlast2; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs2 * basicstep) == gal_steps_vector.end()) {
+  for (int i = 1; i <= giantlast2; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs2 * basicstep) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * gs2 * basicstep);
     }
   }
 }
 
-void Bootstrapper::addLeftRotKeys_Linear_to_vector_3(vector<int> &gal_steps_vector) {
+void Bootstrapper::addLeftRotKeys_Linear_to_vector_3(vector<int> &gal_steps_vector)
+{
   int div_part1 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part1) / 2.0);
   int div_part3 = logn - div_part1 - div_part2;
@@ -116,67 +135,90 @@ void Bootstrapper::addLeftRotKeys_Linear_to_vector_3(vector<int> &gal_steps_vect
   int giantfirst3 = -floor((totlen3 + 0.0) / (gs3 + 0.0));
   int giantlast3 = floor((2 * totlen3 + 0.0) / (gs3 + 0.0)) + giantfirst3;
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep1) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep1) % Nh);
       }
     }
   }
 
-  for (int i = 1; i < gs1_e; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep1) == gal_steps_vector.end()) {
+  for (int i = 1; i < gs1_e; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep1) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * basicstep1);
     }
   }
 
-  for (int i = basicstart2; i < basicstart2 + gs2; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep2) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart2; i < basicstart2 + gs2; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep2) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep2) % Nh);
       }
     }
   }
 
-  for (int i = basicstart3; i < basicstart3 + gs3; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep3) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart3; i < basicstart3 + gs3; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep3) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep3) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1 * basicstep1) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1 * basicstep1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs1 * basicstep1) % Nh);
       }
     }
   }
 
-  for (int i = 1; i <= giantlast1_e; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs1_e * basicstep1) == gal_steps_vector.end()) {
+  for (int i = 1; i <= giantlast1_e; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs1_e * basicstep1) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * gs1_e * basicstep1);
     }
   }
 
-  for (int i = giantfirst2; i <= giantlast2; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2 * basicstep2) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst2; i <= giantlast2; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2 * basicstep2) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs2 * basicstep2) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst3; i <= giantlast3; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs3 * basicstep3) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst3; i <= giantlast3; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs3 * basicstep3) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs3 * basicstep3) % Nh);
       }
     }
   }
 }
-void Bootstrapper::addLeftRotKeys_Linear_to_vector_3_other_slots(vector<int> &gal_steps_vector, long other_logn) {
+void Bootstrapper::addLeftRotKeys_Linear_to_vector_3_other_slots(vector<int> &gal_steps_vector, long other_logn)
+{
   int div_part1 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part1) / 2.0);
   int div_part3 = logn - div_part1 - div_part2;
@@ -213,67 +255,90 @@ void Bootstrapper::addLeftRotKeys_Linear_to_vector_3_other_slots(vector<int> &ga
   int giantfirst3 = -floor((totlen3 + 0.0) / (gs3 + 0.0));
   int giantlast3 = floor((2 * totlen3 + 0.0) / (gs3 + 0.0)) + giantfirst3;
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep1) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep1) % Nh);
       }
     }
   }
 
-  for (int i = 1; i < gs1_e; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep1) == gal_steps_vector.end()) {
+  for (int i = 1; i < gs1_e; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * basicstep1) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * basicstep1);
     }
   }
 
-  for (int i = basicstart2; i < basicstart2 + gs2; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep2) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart2; i < basicstart2 + gs2; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep2) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep2) % Nh);
       }
     }
   }
 
-  for (int i = basicstart3; i < basicstart3 + gs3; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep3) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart3; i < basicstart3 + gs3; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * basicstep3) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * basicstep3) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1 * basicstep1) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1 * basicstep1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs1 * basicstep1) % Nh);
       }
     }
   }
 
-  for (int i = 1; i <= giantlast1_e; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs1_e * basicstep1) == gal_steps_vector.end()) {
+  for (int i = 1; i <= giantlast1_e; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs1_e * basicstep1) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * gs1_e * basicstep1);
     }
   }
 
-  for (int i = giantfirst2; i <= giantlast2; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2 * basicstep2) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst2; i <= giantlast2; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2 * basicstep2) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs2 * basicstep2) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst3; i <= giantlast3; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs3 * basicstep3) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst3; i <= giantlast3; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs3 * basicstep3) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs3 * basicstep3) % Nh);
       }
     }
   }
 }
-void Bootstrapper::addLeftRotKeys_Linear_to_vector_one_depth(vector<int> &gal_steps_vector) {
+void Bootstrapper::addLeftRotKeys_Linear_to_vector_one_depth(vector<int> &gal_steps_vector)
+{
   int totlen1 = (1 << logn) - 1;
   int totlen2 = (1 << logn) - 1;
   int gs1 = giantstep(2 * totlen1 + 1);
@@ -287,65 +352,87 @@ void Bootstrapper::addLeftRotKeys_Linear_to_vector_one_depth(vector<int> &gal_st
   int giantlast2_e = floor((2 * totlen2 + 0.0) / (gs2_e + 0.0)) + giantfirst2_e;
   int giantlast2 = floor((totlen2 + 0.0) / (gs2 + 0.0));
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i) % Nh);
       }
     }
   }
 
-  for (int i = basicstart2_e; i < basicstart2_e + gs2_e; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end()) {
+  for (int i = basicstart2_e; i < basicstart2_e + gs2_e; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i) % Nh);
       }
     }
   }
 
-  for (int i = 1; i < gs2; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i) == gal_steps_vector.end()) {
+  for (int i = 1; i < gs2; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i);
     }
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs1) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs1) % Nh);
       }
     }
   }
 
-  for (int i = giantfirst2_e; i <= giantlast2_e; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2_e) % Nh) == gal_steps_vector.end()) {
+  for (int i = giantfirst2_e; i <= giantlast2_e; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), (Nh + i * gs2_e) % Nh) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back((Nh + i * gs2_e) % Nh);
       }
     }
   }
 
-  for (int i = 1; i <= giantlast2; i++) {
-    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs2) == gal_steps_vector.end()) {
+  for (int i = 1; i <= giantlast2; i++)
+  {
+    if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i * gs2) == gal_steps_vector.end())
+    {
       gal_steps_vector.push_back(i * gs2);
     }
   }
 }
 
-void Bootstrapper::addLeftRotKeys_Linear_to_vector_one_depth_more_depth(vector<int> &gal_steps_vector) {
-  for (int i = 0; i < Nh; i++) {
-    if (i != 0) {
-      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i) == gal_steps_vector.end()) {
+void Bootstrapper::addLeftRotKeys_Linear_to_vector_one_depth_more_depth(vector<int> &gal_steps_vector)
+{
+  for (int i = 0; i < Nh; i++)
+  {
+    if (i != 0)
+    {
+      if (find(gal_steps_vector.begin(), gal_steps_vector.end(), i) == gal_steps_vector.end())
+      {
         gal_steps_vector.push_back(i);
       }
     }
   }
 }
 
-void Bootstrapper::addBootKeys(PhantomGaloisKey &gal_keys) {
+void Bootstrapper::addBootKeys(PhantomGaloisKey &gal_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
   addLeftRotKeys_Linear_to_vector(gal_steps_vector);
@@ -354,8 +441,10 @@ void Bootstrapper::addBootKeys(PhantomGaloisKey &gal_keys) {
   slot_vec.push_back(logn);
 
   slot_index = -1;
-  for (int i = 0; i < slot_vec.size(); i++) {
-    if (slot_vec[i] == logn) {
+  for (int i = 0; i < slot_vec.size(); i++)
+  {
+    if (slot_vec[i] == logn)
+    {
       slot_index = i;
       break;
     }
@@ -364,10 +453,12 @@ void Bootstrapper::addBootKeys(PhantomGaloisKey &gal_keys) {
     throw("LT coefficients were not generated for this logn");
 }
 
-void Bootstrapper::addBootKeys_3(PhantomGaloisKey &gal_keys) {
+void Bootstrapper::addBootKeys_3(PhantomGaloisKey &gal_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
   addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
@@ -375,8 +466,10 @@ void Bootstrapper::addBootKeys_3(PhantomGaloisKey &gal_keys) {
 
   slot_vec.push_back(logn);
   slot_index = -1;
-  for (int i = 0; i < slot_vec.size(); i++) {
-    if (slot_vec[i] == logn) {
+  for (int i = 0; i < slot_vec.size(); i++)
+  {
+    if (slot_vec[i] == logn)
+    {
       slot_index = i;
       break;
     }
@@ -385,21 +478,26 @@ void Bootstrapper::addBootKeys_3(PhantomGaloisKey &gal_keys) {
     throw("LT coefficients were not generated for this logn");
 }
 
-void Bootstrapper::addBootKeys_3_other_slots(PhantomGaloisKey &gal_keys, vector<long> &other_logn_vec) {
+void Bootstrapper::addBootKeys_3_other_slots(PhantomGaloisKey &gal_keys, vector<long> &other_logn_vec)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
-  for (auto i : other_logn_vec) {
+  for (auto i : other_logn_vec)
+  {
     addLeftRotKeys_Linear_to_vector_3_other_slots(gal_steps_vector, i);
     slot_vec.push_back(i);
   }
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 
   slot_index = -1;
-  for (int i = 0; i < slot_vec.size(); i++) {
-    if (slot_vec[i] == logn) {
+  for (int i = 0; i < slot_vec.size(); i++)
+  {
+    if (slot_vec[i] == logn)
+    {
       slot_index = i;
       break;
     }
@@ -408,25 +506,31 @@ void Bootstrapper::addBootKeys_3_other_slots(PhantomGaloisKey &gal_keys, vector<
     throw("LT coefficients were not generated for this logn");
 }
 
-void Bootstrapper::addBootKeys_3_other_slots_keys(PhantomGaloisKey &gal_keys, vector<long> &other_logn_vec, vector<int> &other_keys) {
+void Bootstrapper::addBootKeys_3_other_slots_keys(PhantomGaloisKey &gal_keys, vector<long> &other_logn_vec, vector<int> &other_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
-  for (auto rot : other_keys) {
+  for (auto rot : other_keys)
+  {
     if (find(gal_steps_vector.begin(), gal_steps_vector.end(), rot) == gal_steps_vector.end())
       gal_steps_vector.push_back(rot);
   }
-  for (auto i : other_logn_vec) {
+  for (auto i : other_logn_vec)
+  {
     addLeftRotKeys_Linear_to_vector_3_other_slots(gal_steps_vector, i);
     slot_vec.push_back(i);
   }
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 
   slot_index = -1;
-  for (int i = 0; i < slot_vec.size(); i++) {
-    if (slot_vec[i] == logn) {
+  for (int i = 0; i < slot_vec.size(); i++)
+  {
+    if (slot_vec[i] == logn)
+    {
       slot_index = i;
       break;
     }
@@ -435,14 +539,17 @@ void Bootstrapper::addBootKeys_3_other_slots_keys(PhantomGaloisKey &gal_keys, ve
     throw("LT coefficients were not generated for this logn");
 }
 
-void Bootstrapper::addBootKeys_other_keys(PhantomGaloisKey &gal_keys, vector<int> &other_keys) {
+void Bootstrapper::addBootKeys_other_keys(PhantomGaloisKey &gal_keys, vector<int> &other_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
 
-  for (auto rot : other_keys) {
+  for (auto rot : other_keys)
+  {
     //	if(find(gal_steps_vector.begin(), gal_steps_vector.end(), rot) == gal_steps_vector.end()) gal_steps_vector.emplace_back(rot);
     if (find(gal_steps_vector.begin(), gal_steps_vector.end(), rot) == gal_steps_vector.end())
       gal_steps_vector.push_back(rot);
@@ -453,13 +560,16 @@ void Bootstrapper::addBootKeys_other_keys(PhantomGaloisKey &gal_keys, vector<int
   //	cout << endl;
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 }
-void Bootstrapper::addBootKeys_3_other_keys(PhantomGaloisKey &gal_keys, vector<int> &other_keys) {
+void Bootstrapper::addBootKeys_3_other_keys(PhantomGaloisKey &gal_keys, vector<int> &other_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
-  for (auto rot : other_keys) {
+  for (auto rot : other_keys)
+  {
     if (find(gal_steps_vector.begin(), gal_steps_vector.end(), rot) == gal_steps_vector.end())
       gal_steps_vector.push_back(rot);
   }
@@ -468,42 +578,51 @@ void Bootstrapper::addBootKeys_3_other_keys(PhantomGaloisKey &gal_keys, vector<i
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 }
 
-void Bootstrapper::addBootKeys_hoisting(PhantomGaloisKey &gal_keys) {
+void Bootstrapper::addBootKeys_hoisting(PhantomGaloisKey &gal_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
   addLeftRotKeys_Linear_to_vector(gal_steps_vector);
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 }
 
-void Bootstrapper::addBootKeys_one_depth(PhantomGaloisKey &gal_keys) {
+void Bootstrapper::addBootKeys_one_depth(PhantomGaloisKey &gal_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
   addLeftRotKeys_Linear_to_vector_one_depth(gal_steps_vector);
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 }
 
-void Bootstrapper::addBootKeys_one_depth_more_depth(PhantomGaloisKey &gal_keys) {
+void Bootstrapper::addBootKeys_one_depth_more_depth(PhantomGaloisKey &gal_keys)
+{
   vector<int> gal_steps_vector;
   gal_steps_vector.push_back(0);
-  for (int i = 0; i < logNh; i++) {
+  for (int i = 0; i < logNh; i++)
+  {
     gal_steps_vector.push_back((1 << i));
   }
   addLeftRotKeys_Linear_to_vector_one_depth_more_depth(gal_steps_vector);
   ckks->decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks->galois_keys));
 }
 
-void Bootstrapper::change_logn(long new_logn) {
+void Bootstrapper::change_logn(long new_logn)
+{
   logn = new_logn;
   n = (1 << logn);
   slot_index = -1;
-  for (int i = 0; i < slot_vec.size(); i++) {
-    if (slot_vec[i] == logn) {
+  for (int i = 0; i < slot_vec.size(); i++)
+  {
+    if (slot_vec[i] == logn)
+    {
       slot_index = i;
       break;
     }
@@ -512,10 +631,12 @@ void Bootstrapper::change_logn(long new_logn) {
     throw("LT coefficients were not generated for this logn");
 }
 
-void Bootstrapper::genorigcoeff() {
+void Bootstrapper::genorigcoeff()
+{
   orig_coeffvec.resize(slot_vec.size());
   orig_invcoeffvec.resize(slot_vec.size());
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     long new_logn = slot_vec[u];
     long new_n = (1 << new_logn);
     double theta_0 = M_PI / (2 * new_n);
@@ -527,29 +648,34 @@ void Bootstrapper::genorigcoeff() {
 
     orig_coeffvec[u].resize(new_logn);
 
-    for (int i = 0; i < new_logn; i++) {
+    for (int i = 0; i < new_logn; i++)
+    {
       orig_coeffvec[u][i].resize(3);
-      for (int j = 0; j < 3; j++) {
+      for (int j = 0; j < 3; j++)
+      {
         orig_coeffvec[u][i][j].resize(new_n);
       }
     }
 
-    for (int i = 0; i < new_logn; i++) {
+    for (int i = 0; i < new_logn; i++)
+    {
       blocklen = blocklen << 1;
       blockcount = blockcount >> 1;
       current_theta = theta_0 * (1 << (new_logn - 1 - i));
       current_power = 1;
       current_zeta = std::polar(1.0, current_theta * current_power);
-      for (int j = 0; j < blocklen / 2; j++) {
-        for (int k = 0; k < blockcount; k++) {
+      for (int j = 0; j < blocklen / 2; j++)
+      {
+        for (int k = 0; k < blockcount; k++)
+        {
           orig_coeffvec[u][i][1][k * blocklen + j] = 1;
           orig_coeffvec[u][i][1][k * blocklen + j + blocklen / 2] = -current_zeta;
 
-          orig_coeffvec[u][i][0][k * blocklen + j] = 0;                 // index 2 -> 0
-          orig_coeffvec[u][i][0][k * blocklen + j + blocklen / 2] = 1;  // index 2 -> 0
+          orig_coeffvec[u][i][0][k * blocklen + j] = 0;                // index 2 -> 0
+          orig_coeffvec[u][i][0][k * blocklen + j + blocklen / 2] = 1; // index 2 -> 0
 
-          orig_coeffvec[u][i][2][k * blocklen + j] = current_zeta;      // index 0 -> 2
-          orig_coeffvec[u][i][2][k * blocklen + j + blocklen / 2] = 0;  // index 0 -> 2
+          orig_coeffvec[u][i][2][k * blocklen + j] = current_zeta;     // index 0 -> 2
+          orig_coeffvec[u][i][2][k * blocklen + j + blocklen / 2] = 0; // index 0 -> 2
         }
         current_power = (5 * current_power) % (1 << (i + 3));
         current_zeta = std::polar(1.0, current_theta * current_power);
@@ -563,19 +689,24 @@ void Bootstrapper::genorigcoeff() {
     orig_invcoeffvec.clear();
     orig_invcoeffvec[u].resize(new_logn);
 
-    for (int i = 0; i < new_logn; i++) {
+    for (int i = 0; i < new_logn; i++)
+    {
       orig_invcoeffvec[u][i].resize(3);
-      for (int j = 0; j < 3; j++) {
+      for (int j = 0; j < 3; j++)
+      {
         orig_invcoeffvec[u][i][j].resize(new_n);
       }
     }
 
-    for (int i = 0; i < new_logn; i++) {
+    for (int i = 0; i < new_logn; i++)
+    {
       current_theta = theta_0 * (1 << i);
       current_power = 1;
       current_zeta = std::polar(1.0, current_theta * current_power);
-      for (int j = 0; j < blocklen / 2; j++) {
-        for (int k = 0; k < blockcount; k++) {
+      for (int j = 0; j < blocklen / 2; j++)
+      {
+        for (int k = 0; k < blockcount; k++)
+        {
           orig_invcoeffvec[u][i][1][k * blocklen + j] = 0.5;
           orig_invcoeffvec[u][i][1][k * blocklen + j + blocklen / 2] = -0.5 * current_zeta;
 
@@ -594,13 +725,15 @@ void Bootstrapper::genorigcoeff() {
   }
 }
 
-void Bootstrapper::genfftcoeff_one_depth() {
+void Bootstrapper::genfftcoeff_one_depth()
+{
   fftcoeff1.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
 
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
 
@@ -618,10 +751,12 @@ void Bootstrapper::genfftcoeff_one_depth() {
 
     all_case_count = pow(3, curr_logn);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -629,30 +764,36 @@ void Bootstrapper::genfftcoeff_one_depth() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + current_pos + curr_n) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff1[u][pos + totlen1][k] += tmpvec[k];
       }
     }
   }
 }
 
-void Bootstrapper::genfftcoeff_full_one_depth() {
+void Bootstrapper::genfftcoeff_full_one_depth()
+{
   fftcoeff1.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     totlen1 = (1 << curr_logn) - 1;
@@ -669,10 +810,12 @@ void Bootstrapper::genfftcoeff_full_one_depth() {
     tmpcount.resize(curr_logn);
     all_case_count = pow(3, curr_logn);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -680,29 +823,35 @@ void Bootstrapper::genfftcoeff_full_one_depth() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
       }
     }
   }
 }
-void Bootstrapper::geninvfftcoeff_one_depth() {
+void Bootstrapper::geninvfftcoeff_one_depth()
+{
   invfftcoeff1.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     totlen1 = (1 << curr_logn) - 1;
@@ -719,35 +868,42 @@ void Bootstrapper::geninvfftcoeff_one_depth() {
     tmpcount.resize(curr_logn);
     all_case_count = pow(3, curr_logn);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << (curr_logn - 1 - p));
         tmpcount[p] = ind_res;
         ind = (ind - ind_res) / 3;
       }
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < curr_logn; p++) {
+      for (int p = 0; p < curr_logn; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << (curr_logn - 1 - p));
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p][tmpcount[p]][((k + (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         invfftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
       }
     }
   }
 }
 
-void Bootstrapper::generate_LT_coefficient_one_depth() {
+void Bootstrapper::generate_LT_coefficient_one_depth()
+{
   genorigcoeff();
   if (logn == logNh)
     genfftcoeff_full_one_depth();
@@ -756,13 +912,15 @@ void Bootstrapper::generate_LT_coefficient_one_depth() {
   geninvfftcoeff_one_depth();
 }
 
-void Bootstrapper::genfftcoeff() {
+void Bootstrapper::genfftcoeff()
+{
   fftcoeff1.resize(slot_vec.size());
   fftcoeff2.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, totlen2, split_point, basicstep, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     split_point = floor(curr_logn / 2.0);
@@ -784,10 +942,12 @@ void Bootstrapper::genfftcoeff() {
     tmpcount.resize(split_point);
     all_case_count = pow(3, split_point);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -795,23 +955,28 @@ void Bootstrapper::genfftcoeff() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + current_pos + curr_n) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff1[u][pos + totlen1][k] += tmpvec[k];
       }
     }
 
-    for (int i = 0; i < 2 * totlen1 + 1; i++) {
+    for (int i = 0; i < 2 * totlen1 + 1; i++)
+    {
       for (int j = 0; j < curr_n; j++)
         fftcoeff1[u][i][j + curr_n] = fftcoeff1[u][i][j];
     }
@@ -821,10 +986,12 @@ void Bootstrapper::genfftcoeff() {
     tmpcount.resize(curr_logn - split_point);
     all_case_count = pow(3, curr_logn - split_point);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -832,36 +999,43 @@ void Bootstrapper::genfftcoeff() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + split_point][tmpcount[p]][((k + basicstep * (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff2[u][pos + totlen2][k] += tmpvec[k];
       }
     }
 
-    for (int i = 0; i < 2 * totlen2 + 1; i++) {
+    for (int i = 0; i < 2 * totlen2 + 1; i++)
+    {
       for (int j = 0; j < curr_n; j++)
         fftcoeff2[u][i][j + curr_n] = complex<double>(0, 1) * fftcoeff2[u][i][j];
     }
   }
 }
 
-void Bootstrapper::genfftcoeff_full() {
+void Bootstrapper::genfftcoeff_full()
+{
   fftcoeff1.resize(slot_vec.size());
   fftcoeff2.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, totlen2, split_point, basicstep, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     split_point = floor(curr_logn / 2.0);
@@ -883,10 +1057,12 @@ void Bootstrapper::genfftcoeff_full() {
     tmpcount.resize(split_point);
     all_case_count = pow(3, split_point);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -894,18 +1070,22 @@ void Bootstrapper::genfftcoeff_full() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + current_pos + curr_n) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff1[u][pos + totlen1][k] += tmpvec[k];
       }
     }
@@ -915,10 +1095,12 @@ void Bootstrapper::genfftcoeff_full() {
     tmpcount.resize(curr_logn - split_point);
     all_case_count = pow(3, curr_logn - split_point);
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << p);
         tmpcount[p] = ind_res;
@@ -926,31 +1108,37 @@ void Bootstrapper::genfftcoeff_full() {
       }
 
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + split_point][tmpcount[p]][((k + basicstep * (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         fftcoeff2[u][(pos + totlen2 + 1) % (totlen2 + 1)][k] += tmpvec[k];
       }
     }
   }
 }
 
-void Bootstrapper::geninvfftcoeff() {
+void Bootstrapper::geninvfftcoeff()
+{
   invfftcoeff1.resize(slot_vec.size());
   invfftcoeff2.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, totlen2, split_point, basicstep, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     split_point = ceil(curr_logn / 2.0);
@@ -973,66 +1161,81 @@ void Bootstrapper::geninvfftcoeff() {
     all_case_count = pow(3, split_point);
     basicstep = (1 << (curr_logn - split_point));
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << (split_point - 1 - p));
         tmpcount[p] = ind_res;
         ind = (ind - ind_res) / 3;
       }
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << (split_point - 1 - p));
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p][tmpcount[p]][((k + basicstep * (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         invfftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
       }
     }
     tmpcount.clear();
     tmpcount.resize(curr_logn - split_point);
     all_case_count = pow(3, curr_logn - split_point);
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << (curr_logn - split_point - 1 - p));
         tmpcount[p] = ind_res;
         ind = (ind - ind_res) / 3;
       }
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << (curr_logn - split_point - 1 - p));
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p + split_point][tmpcount[p]][((k + current_pos + curr_n) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         invfftcoeff2[u][pos + totlen2][k] += tmpvec[k];
       }
     }
 
-    for (int i = 0; i < totlen1 + 1; i++) {
+    for (int i = 0; i < totlen1 + 1; i++)
+    {
       for (int j = 0; j < curr_n; j++)
         invfftcoeff1[u][i][j] *= 1.0 / (boundary_K * (1 << (logNh - curr_logn)));
     }
 
-    for (int i = 0; i < 2 * totlen2 + 1; i++) {
-      for (int j = 0; j < curr_n; j++) {
+    for (int i = 0; i < 2 * totlen2 + 1; i++)
+    {
+      for (int j = 0; j < curr_n; j++)
+      {
         invfftcoeff2[u][i][j] *= 0.5;
         invfftcoeff2[u][i][j + curr_n] = complex<double>(0, -1) * invfftcoeff2[u][i][j];
       }
@@ -1040,13 +1243,15 @@ void Bootstrapper::geninvfftcoeff() {
   }
 }
 
-void Bootstrapper::geninvfftcoeff_full() {
+void Bootstrapper::geninvfftcoeff_full()
+{
   invfftcoeff1.resize(slot_vec.size());
   invfftcoeff2.resize(slot_vec.size());
   vector<complex<double>> tmpvec;
   vector<int> tmpcount;
   int totlen1, totlen2, split_point, basicstep, all_case_count, pos, current_pos, ind, ind_res, curr_logn, curr_n;
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
     split_point = ceil(curr_logn / 2.0);
@@ -1069,72 +1274,87 @@ void Bootstrapper::geninvfftcoeff_full() {
     all_case_count = pow(3, split_point);
     basicstep = (1 << (curr_logn - split_point));
 
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << (split_point - 1 - p));
         tmpcount[p] = ind_res;
         ind = (ind - ind_res) / 3;
       }
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
 
-      for (int p = 0; p < split_point; p++) {
+      for (int p = 0; p < split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << (split_point - 1 - p));
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p][tmpcount[p]][((k + basicstep * (curr_n + current_pos)) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         invfftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
       }
     }
     tmpcount.clear();
     tmpcount.resize(logn - split_point);
     all_case_count = pow(3, curr_logn - split_point);
-    for (int j = 0; j < all_case_count; j++) {
+    for (int j = 0; j < all_case_count; j++)
+    {
       ind = j;
       pos = 0;
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         ind_res = ind % 3;
         pos += (ind_res - 1) * (1 << (curr_logn - split_point - 1 - p));
         tmpcount[p] = ind_res;
         ind = (ind - ind_res) / 3;
       }
       current_pos = pos;
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         tmpvec[k] = 1.0;
       }
-      for (int p = 0; p < curr_logn - split_point; p++) {
+      for (int p = 0; p < curr_logn - split_point; p++)
+      {
         current_pos = current_pos - (tmpcount[p] - 1) * (1 << (curr_logn - split_point - 1 - p));
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p + split_point][tmpcount[p]][((k + current_pos + curr_n) % curr_n)];
         }
       }
 
-      for (int k = 0; k < curr_n; k++) {
+      for (int k = 0; k < curr_n; k++)
+      {
         invfftcoeff2[u][pos + totlen2][k] += tmpvec[k];
       }
     }
 
-    for (int i = 0; i < totlen1 + 1; i++) {
+    for (int i = 0; i < totlen1 + 1; i++)
+    {
       for (int j = 0; j < curr_n; j++)
         invfftcoeff1[u][i][j] *= 1.0 / boundary_K;
     }
 
-    for (int i = 0; i < 2 * totlen2 + 1; i++) {
+    for (int i = 0; i < 2 * totlen2 + 1; i++)
+    {
       for (int j = 0; j < curr_n; j++)
         invfftcoeff2[u][i][j] *= 0.5;
     }
   }
 }
 
-void Bootstrapper::genfftcoeff_3() {  // not yet
+void Bootstrapper::genfftcoeff_3()
+{ // not yet
   fftcoeff1.resize(slot_vec.size());
   fftcoeff2.resize(slot_vec.size());
   fftcoeff3.resize(slot_vec.size());
@@ -1146,10 +1366,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
   int all_case_count, pos, current_pos, ind, ind_res;
   int curr_logn, curr_n;
 
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
-    if (curr_logn == logNh) {
+    if (curr_logn == logNh)
+    {
       div_part3 = floor(curr_logn / 3.0);
       div_part2 = floor((curr_logn - div_part3) / 2.0);
       div_part1 = curr_logn - div_part3 - div_part2;
@@ -1180,10 +1402,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part1);
       all_case_count = pow(3, div_part1);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1191,18 +1415,22 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + basicstep1 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff1[u][pos + totlen1][k] += tmpvec[k];
         }
       }
@@ -1211,10 +1439,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part2);
       all_case_count = pow(3, div_part2);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1222,18 +1452,22 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + div_part1][tmpcount[p]][((k + basicstep2 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff2[u][pos + totlen2][k] += tmpvec[k];
         }
       }
@@ -1242,10 +1476,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part3);
       all_case_count = pow(3, div_part3);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1253,25 +1489,29 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + div_part1 + div_part2][tmpcount[p]][((k + basicstep3 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff3[u][(pos + totlen3 + 1) % (totlen3 + 1)][k] += tmpvec[k];
         }
       }
-
     }
 
-    else {
+    else
+    {
       div_part3 = floor(curr_logn / 3.0);
       div_part2 = floor((curr_logn - div_part3) / 2.0);
       div_part1 = curr_logn - div_part3 - div_part2;
@@ -1302,10 +1542,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part1);
       all_case_count = pow(3, div_part1);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1313,23 +1555,28 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p][tmpcount[p]][((k + basicstep1 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff1[u][pos + totlen1][k] += tmpvec[k];
         }
       }
 
-      for (int i = 0; i < 2 * totlen1 + 1; i++) {
+      for (int i = 0; i < 2 * totlen1 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           fftcoeff1[u][i][j + curr_n] = fftcoeff1[u][i][j];
       }
@@ -1338,10 +1585,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part2);
       all_case_count = pow(3, div_part2);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1349,23 +1598,28 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + div_part1][tmpcount[p]][((k + basicstep2 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff2[u][pos + totlen2][k] += tmpvec[k];
         }
       }
 
-      for (int i = 0; i < 2 * totlen2 + 1; i++) {
+      for (int i = 0; i < 2 * totlen2 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           fftcoeff2[u][i][j + curr_n] = fftcoeff2[u][i][j];
       }
@@ -1374,10 +1628,12 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
       tmpcount.resize(div_part3);
       all_case_count = pow(3, div_part3);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << p);
           tmpcount[p] = ind_res;
@@ -1385,23 +1641,28 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
         }
 
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << p);
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_coeffvec[u][p + div_part1 + div_part2][tmpcount[p]][((k + basicstep3 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           fftcoeff3[u][pos + totlen3][k] += tmpvec[k];
         }
       }
 
-      for (int i = 0; i < 2 * totlen3 + 1; i++) {
+      for (int i = 0; i < 2 * totlen3 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           fftcoeff3[u][i][j + curr_n] = complex<double>(0, 1) * fftcoeff3[u][i][j];
       }
@@ -1542,7 +1803,8 @@ void Bootstrapper::genfftcoeff_3() {  // not yet
 //}
 //}
 
-void Bootstrapper::geninvfftcoeff_3() {  // not yet
+void Bootstrapper::geninvfftcoeff_3()
+{ // not yet
   invfftcoeff1.resize(slot_vec.size());
   invfftcoeff2.resize(slot_vec.size());
   invfftcoeff3.resize(slot_vec.size());
@@ -1554,10 +1816,12 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
   int all_case_count, pos, current_pos, ind, ind_res;
   int curr_logn, curr_n;
 
-  for (int u = 0; u < slot_vec.size(); u++) {
+  for (int u = 0; u < slot_vec.size(); u++)
+  {
     curr_logn = slot_vec[u];
     curr_n = (1 << curr_logn);
-    if (curr_logn == logNh) {
+    if (curr_logn == logNh)
+    {
       div_part1 = floor(curr_logn / 3.0);
       div_part2 = floor((curr_logn - div_part1) / 2.0);
       div_part3 = curr_logn - div_part1 - div_part2;
@@ -1588,28 +1852,34 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.resize(div_part1);
       all_case_count = pow(3, div_part1);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part1 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part1 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p][tmpcount[p]][((k + basicstep1 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
         }
       }
@@ -1617,27 +1887,33 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.clear();
       tmpcount.resize(div_part2);
       all_case_count = pow(3, div_part2);
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part2 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part2 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p + div_part1][tmpcount[p]][((k + basicstep2 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff2[u][pos + totlen2][k] += tmpvec[k];
         }
       }
@@ -1645,45 +1921,53 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.clear();
       tmpcount.resize(div_part3);
       all_case_count = pow(3, div_part3);
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part3 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part3 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] =
                 tmpvec[k] * orig_invcoeffvec[u][p + div_part1 + div_part2][tmpcount[p]][((k + basicstep3 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff3[u][pos + totlen3][k] += tmpvec[k];
         }
       }
 
-      for (int i = 0; i < totlen1 + 1; i++) {
+      for (int i = 0; i < totlen1 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           invfftcoeff1[u][i][j] *= 1.0 / boundary_K;
       }
 
-      for (int i = 0; i < 2 * totlen3 + 1; i++) {
+      for (int i = 0; i < 2 * totlen3 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           invfftcoeff3[u][i][j] *= 0.5;
       }
-
     }
 
-    else {
+    else
+    {
       div_part1 = floor(curr_logn / 3.0);
       div_part2 = floor((curr_logn - div_part1) / 2.0);
       div_part3 = curr_logn - div_part1 - div_part2;
@@ -1714,28 +1998,34 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.resize(div_part1);
       all_case_count = pow(3, div_part1);
 
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part1 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
 
-        for (int p = 0; p < div_part1; p++) {
+        for (int p = 0; p < div_part1; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part1 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p][tmpcount[p]][((k + basicstep1 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff1[u][(pos + totlen1 + 1) % (totlen1 + 1)][k] += tmpvec[k];
         }
       }
@@ -1743,27 +2033,33 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.clear();
       tmpcount.resize(div_part2);
       all_case_count = pow(3, div_part2);
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part2 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
-        for (int p = 0; p < div_part2; p++) {
+        for (int p = 0; p < div_part2; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part2 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] = tmpvec[k] * orig_invcoeffvec[u][p + div_part1][tmpcount[p]][((k + basicstep2 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff2[u][pos + totlen2][k] += tmpvec[k];
         }
       }
@@ -1771,39 +2067,48 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
       tmpcount.clear();
       tmpcount.resize(div_part3);
       all_case_count = pow(3, div_part3);
-      for (int j = 0; j < all_case_count; j++) {
+      for (int j = 0; j < all_case_count; j++)
+      {
         ind = j;
         pos = 0;
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           ind_res = ind % 3;
           pos += (ind_res - 1) * (1 << (div_part3 - 1 - p));
           tmpcount[p] = ind_res;
           ind = (ind - ind_res) / 3;
         }
         current_pos = pos;
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           tmpvec[k] = 1.0;
         }
-        for (int p = 0; p < div_part3; p++) {
+        for (int p = 0; p < div_part3; p++)
+        {
           current_pos = current_pos - (tmpcount[p] - 1) * (1 << (div_part3 - 1 - p));
-          for (int k = 0; k < curr_n; k++) {
+          for (int k = 0; k < curr_n; k++)
+          {
             tmpvec[k] =
                 tmpvec[k] * orig_invcoeffvec[u][p + div_part1 + div_part2][tmpcount[p]][((k + basicstep3 * (curr_n + current_pos)) % curr_n)];
           }
         }
 
-        for (int k = 0; k < curr_n; k++) {
+        for (int k = 0; k < curr_n; k++)
+        {
           invfftcoeff3[u][pos + totlen3][k] += tmpvec[k];
         }
       }
 
-      for (int i = 0; i < totlen1 + 1; i++) {
+      for (int i = 0; i < totlen1 + 1; i++)
+      {
         for (int j = 0; j < curr_n; j++)
           invfftcoeff1[u][i][j] *= 1.0 / (boundary_K * (1 << (logNh - curr_logn)));
       }
 
-      for (int i = 0; i < 2 * totlen3 + 1; i++) {
-        for (int j = 0; j < curr_n; j++) {
+      for (int i = 0; i < 2 * totlen3 + 1; i++)
+      {
+        for (int j = 0; j < curr_n; j++)
+        {
           invfftcoeff3[u][i][j] *= 0.5;
           invfftcoeff3[u][i][j + curr_n] = complex<double>(0, -1) * invfftcoeff3[u][i][j];
         }
@@ -1812,34 +2117,42 @@ void Bootstrapper::geninvfftcoeff_3() {  // not yet
   }
 }
 
-void Bootstrapper::generate_LT_coefficient() {
+void Bootstrapper::generate_LT_coefficient()
+{
   genorigcoeff();
-  if (logn == logNh) {
+  if (logn == logNh)
+  {
     genfftcoeff_full();
     geninvfftcoeff_full();
-  } else {
+  }
+  else
+  {
     genfftcoeff();
     geninvfftcoeff();
   }
 }
 
-void Bootstrapper::generate_LT_coefficient_3() {
+void Bootstrapper::generate_LT_coefficient_3()
+{
   genorigcoeff();
   genfftcoeff_3();
   geninvfftcoeff_3();
 }
 
-void Bootstrapper::prepare_mod_polynomial() {
+void Bootstrapper::prepare_mod_polynomial()
+{
   mod_reducer->generate_sin_cos_polynomial();
   mod_reducer->generate_inverse_sine_polynomial();
   // mod_reducer->write_polynomials();
 }
 
-void Bootstrapper::subsum(double scale, PhantomCiphertext &cipher) {
+void Bootstrapper::subsum(double scale, PhantomCiphertext &cipher)
+{
   int repeatcount = (1 << (logNh - logn));
   PhantomCiphertext tmp;
   int step;
-  for (int i = 0; i < logNh - logn; i++) {
+  for (int i = 0; i < logNh - logn; i++)
+  {
     step = (1 << (logn + i));
     ckks->evaluator.rotate_vector(cipher, step, *(ckks->galois_keys), tmp);
     ckks->evaluator.add_inplace_reduced_error(cipher, tmp);
@@ -1853,7 +2166,8 @@ void Bootstrapper::subsum(double scale, PhantomCiphertext &cipher) {
 }
 
 void Bootstrapper::bsgs_linear_transform(
-    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, const vector<vector<complex<double>>> &fftcoeff) {
+    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, const vector<vector<complex<double>>> &fftcoeff)
+{
   int gs1 = giantstep(2 * totlen + 1);
   int basicstart1 = -totlen + gs1 * floor((totlen + 0.0) / (gs1 + 0.0));
   int giantfirst1 = -floor((totlen + 0.0) / (gs1 + 0.0));
@@ -1869,49 +2183,67 @@ void Bootstrapper::bsgs_linear_transform(
   PhantomPlaintext tmpplain;
   PhantomCiphertext addtmp1, addtmp2;
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
     if (i == 0)
       babyct[i - basicstart1] = cipher;
     else
       ckks->evaluator.rotate_vector(cipher, (Nh + i * basicstep) % Nh, *(ckks->galois_keys), babyct[i - basicstart1]);
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
     giantbool = false;
-    if (i != giantlast1) {
-      for (int j = basicstart1; j < basicstart1 + gs1; j++) {
+    if (i != giantlast1)
+    {
+      for (int j = basicstart1; j < basicstart1 + gs1; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs1 * basicstep, fftcoeff[(i * gs1 + j) + totlen], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j - basicstart1], rotatedcoeff, tmptmpct);
-        if (!giantbool) {
+        if (!giantbool)
+        {
           giantct = tmptmpct;
           giantbool = true;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(giantct, tmptmpct);
       }
-    } else {
-      for (int j = basicstart1; j <= totlen - i * gs1; j++) {
+    }
+    else
+    {
+      for (int j = basicstart1; j <= totlen - i * gs1; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs1 * basicstep, fftcoeff[(i * gs1 + j) + totlen], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j - basicstart1], rotatedcoeff, tmptmpct);
-        if (!giantbool) {
+        if (!giantbool)
+        {
           giantct = tmptmpct;
           giantbool = true;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(giantct, tmptmpct);
       }
     }
 
-    if (i != 0) {
+    if (i != 0)
+    {
       ckks->evaluator.rotate_vector(giantct, (Nh + i * gs1 * basicstep) % Nh, *(ckks->galois_keys), tmptmpct);
-      if (!tmpctbool) {
+      if (!tmpctbool)
+      {
         tmpct = tmptmpct;
         tmpctbool = true;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(tmpct, tmptmpct);
-    } else {
-      if (!tmpctbool) {
+    }
+    else
+    {
+      if (!tmpctbool)
+      {
         tmpct = giantct;
         tmpctbool = true;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(tmpct, giantct);
     }
   }
@@ -1919,7 +2251,8 @@ void Bootstrapper::bsgs_linear_transform(
 }
 
 void Bootstrapper::rotated_bsgs_linear_transform(
-    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, const vector<vector<complex<double>>> &fftcoeff) {
+    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, const vector<vector<complex<double>>> &fftcoeff)
+{
   int gs2 = giantstep(totlen + 1);
   int giantlast2 = floor((totlen + 0.0) / (gs2 + 0.0));
 
@@ -1934,50 +2267,71 @@ void Bootstrapper::rotated_bsgs_linear_transform(
 
   PhantomCiphertext addtmp1, addtmp2;
 
-  for (int i = 0; i < gs2; i++) {
-    if (i == 0) {
+  for (int i = 0; i < gs2; i++)
+  {
+    if (i == 0)
+    {
       babyct[i] = cipher;
-    } else {
+    }
+    else
+    {
       ckks->evaluator.rotate_vector(cipher, (Nh + i * basicstep) % Nh, *(ckks->galois_keys), babyct[i]);
     }
   }
 
-  for (int i = 0; i <= giantlast2; i++) {
+  for (int i = 0; i <= giantlast2; i++)
+  {
     giantbool = false;
-    if (i != giantlast2) {
-      for (int j = 0; j < gs2; j++) {
+    if (i != giantlast2)
+    {
+      for (int j = 0; j < gs2; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs2 * basicstep, fftcoeff[i * gs2 + j], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j], rotatedcoeff, tmptmpct);
-        if (!giantbool) {
+        if (!giantbool)
+        {
           giantct = tmptmpct;
           giantbool = true;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(giantct, tmptmpct);
       }
-    } else {
-      for (int j = 0; j <= totlen - i * gs2; j++) {
+    }
+    else
+    {
+      for (int j = 0; j <= totlen - i * gs2; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs2 * basicstep, fftcoeff[i * gs2 + j], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j], rotatedcoeff, tmptmpct);
-        if (!giantbool) {
+        if (!giantbool)
+        {
           giantct = tmptmpct;
           giantbool = true;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(giantct, tmptmpct);
       }
     }
 
-    if (i != 0) {
+    if (i != 0)
+    {
       ckks->evaluator.rotate_vector(giantct, (Nh + i * gs2 * basicstep) % Nh, *(ckks->galois_keys), tmptmpct);
-      if (!tmpctbool) {
+      if (!tmpctbool)
+      {
         tmpct = tmptmpct;
         tmpctbool = true;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(tmpct, tmptmpct);
-    } else {
-      if (!tmpctbool) {
+    }
+    else
+    {
+      if (!tmpctbool)
+      {
         tmpct = giantct;
         tmpctbool = true;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(tmpct, giantct);
     }
   }
@@ -1985,7 +2339,8 @@ void Bootstrapper::rotated_bsgs_linear_transform(
   rtncipher = tmpct;
 }
 void Bootstrapper::bsgs_linear_transform_hoisting(
-    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, vector<vector<complex<double>>> fftcoeff) {
+    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, vector<vector<complex<double>>> fftcoeff)
+{
   int gs1 = giantstep(2 * totlen + 1);
   int basicstart1 = -totlen + gs1 * floor((totlen + 0.0) / (gs1 + 0.0));
   int giantfirst1 = -floor((totlen + 0.0) / (gs1 + 0.0));
@@ -2000,51 +2355,69 @@ void Bootstrapper::bsgs_linear_transform_hoisting(
   PhantomPlaintext tmpplain;
   PhantomCiphertext addtmp1, addtmp2;
 
-  for (int i = basicstart1; i < basicstart1 + gs1; i++) {
+  for (int i = basicstart1; i < basicstart1 + gs1; i++)
+  {
     if (i == 0)
       babyct[i - basicstart1] = cipher;
     else
       ckks->evaluator.rotate_vector(cipher, (Nh + i * basicstep) % Nh, *(ckks->galois_keys), babyct[i - basicstart1]);
   }
 
-  for (int i = giantfirst1; i <= giantlast1; i++) {
+  for (int i = giantfirst1; i <= giantlast1; i++)
+  {
     if (!(giantct == 0))
       delete giantct;
     giantct = 0;
-    if (i != giantlast1) {
-      for (int j = basicstart1; j < basicstart1 + gs1; j++) {
+    if (i != giantlast1)
+    {
+      for (int j = basicstart1; j < basicstart1 + gs1; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs1 * basicstep, fftcoeff[(i * gs1 + j) + totlen], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j - basicstart1], rotatedcoeff, tmptmpct);
-        if (giantct == 0) {
+        if (giantct == 0)
+        {
           giantct = new PhantomCiphertext();
           *giantct = tmptmpct;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(*giantct, tmptmpct);
       }
-    } else {
-      for (int j = basicstart1; j <= totlen - i * gs1; j++) {
+    }
+    else
+    {
+      for (int j = basicstart1; j <= totlen - i * gs1; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs1 * basicstep, fftcoeff[(i * gs1 + j) + totlen], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j - basicstart1], rotatedcoeff, tmptmpct);
-        if (giantct == 0) {
+        if (giantct == 0)
+        {
           giantct = new PhantomCiphertext();
           *giantct = tmptmpct;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(*giantct, tmptmpct);
       }
     }
 
-    if (i != 0) {
+    if (i != 0)
+    {
       ckks->evaluator.rotate_vector(*giantct, (Nh + i * gs1 * basicstep) % Nh, *(ckks->galois_keys), tmptmpct);
-      if (tmpct == 0) {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext();
         *tmpct = tmptmpct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, tmptmpct);
-    } else {
-      if (tmpct == 0) {
+    }
+    else
+    {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext();
         *tmpct = *giantct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, *giantct);
     }
   }
@@ -2054,7 +2427,8 @@ void Bootstrapper::bsgs_linear_transform_hoisting(
 }
 
 void Bootstrapper::rotated_bsgs_linear_transform_hoisting(
-    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, vector<vector<complex<double>>> fftcoeff) {
+    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int basicstep, int coeff_logn, vector<vector<complex<double>>> fftcoeff)
+{
   int gs2 = giantstep(totlen + 1);
   int giantlast2 = floor((totlen + 0.0) / (gs2 + 0.0));
 
@@ -2072,52 +2446,73 @@ void Bootstrapper::rotated_bsgs_linear_transform_hoisting(
     delete tmpct;
   tmpct = 0;
 
-  for (int i = 0; i < gs2; i++) {
-    if (i == 0) {
+  for (int i = 0; i < gs2; i++)
+  {
+    if (i == 0)
+    {
       babyct[i] = cipher;
-    } else {
+    }
+    else
+    {
       ckks->evaluator.rotate_vector(cipher, (Nh + i * basicstep) % Nh, *(ckks->galois_keys), babyct[i]);
     }
   }
 
-  for (int i = 0; i <= giantlast2; i++) {
+  for (int i = 0; i <= giantlast2; i++)
+  {
     if (!(giantct == 0))
       delete giantct;
     giantct = 0;
-    if (i != giantlast2) {
-      for (int j = 0; j < gs2; j++) {
+    if (i != giantlast2)
+    {
+      for (int j = 0; j < gs2; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs2 * basicstep, fftcoeff[i * gs2 + j], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j], rotatedcoeff, tmptmpct);
-        if (giantct == 0) {
+        if (giantct == 0)
+        {
           giantct = new PhantomCiphertext();
           *giantct = tmptmpct;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(*giantct, tmptmpct);
       }
-    } else {
-      for (int j = 0; j <= totlen - i * gs2; j++) {
+    }
+    else
+    {
+      for (int j = 0; j <= totlen - i * gs2; j++)
+      {
         rotation(coeff_logn, Nh, (-i) * gs2 * basicstep, fftcoeff[i * gs2 + j], rotatedcoeff);
         ckks->evaluator.multiply_vector_reduced_error(babyct[j], rotatedcoeff, tmptmpct);
-        if (giantct == 0) {
+        if (giantct == 0)
+        {
           giantct = new PhantomCiphertext();
           *giantct = tmptmpct;
-        } else
+        }
+        else
           ckks->evaluator.add_inplace_reduced_error(*giantct, tmptmpct);
       }
     }
 
-    if (i != 0) {
+    if (i != 0)
+    {
       ckks->evaluator.rotate_vector(*giantct, (Nh + i * gs2 * basicstep) % Nh, *(ckks->galois_keys), tmptmpct);
-      if (tmpct == 0) {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext;
         *tmpct = tmptmpct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, tmptmpct);
-    } else {
-      if (tmpct == 0) {
+    }
+    else
+    {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext;
         *tmpct = *giantct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, *giantct);
     }
   }
@@ -2126,7 +2521,8 @@ void Bootstrapper::rotated_bsgs_linear_transform_hoisting(
   delete[] babyct;
 }
 void Bootstrapper::rotated_nobsgs_linear_transform(
-    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int coeff_logn, vector<vector<complex<double>>> fftcoeff) {
+    PhantomCiphertext &rtncipher, PhantomCiphertext &cipher, int totlen, int coeff_logn, vector<vector<complex<double>>> fftcoeff)
+{
   PhantomCiphertext *giantct = 0, *tmpct = 0;
 
   PhantomCiphertext tmptmpct;
@@ -2136,24 +2532,32 @@ void Bootstrapper::rotated_nobsgs_linear_transform(
   PhantomPlaintext tmpplain;
   PhantomCiphertext addtmp1, addtmp2;
 
-  for (int i = 0; i <= totlen; i++) {
+  for (int i = 0; i <= totlen; i++)
+  {
     giantct = 0;
     rotation(coeff_logn, Nh, -i, fftcoeff[i], rotatedcoeff);
     ckks->evaluator.multiply_vector_reduced_error(cipher, rotatedcoeff, tmptmpct);
     giantct = new PhantomCiphertext();
     *giantct = tmptmpct;
-    if (i != 0) {
+    if (i != 0)
+    {
       ckks->evaluator.rotate_vector(*giantct, i, *(ckks->galois_keys), tmptmpct);
-      if (tmpct == 0) {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext;
         *tmpct = tmptmpct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, tmptmpct);
-    } else {
-      if (tmpct == 0) {
+    }
+    else
+    {
+      if (tmpct == 0)
+      {
         tmpct = new PhantomCiphertext;
         *tmpct = *giantct;
-      } else
+      }
+      else
         ckks->evaluator.add_inplace_reduced_error(*tmpct, *giantct);
     }
     delete giantct;
@@ -2161,12 +2565,15 @@ void Bootstrapper::rotated_nobsgs_linear_transform(
   rtncipher = *tmpct;
 }
 
-void Bootstrapper::sfl_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int totlen1 = (1 << logn) - 1;
   vector<vector<complex<double>>> fftcoeff1_ext(2 * totlen1 + 1);
-  for (int i = 0; i < 2 * totlen1 + 1; i++) {
+  for (int i = 0; i < 2 * totlen1 + 1; i++)
+  {
     fftcoeff1_ext[i].resize(2 * n);
-    for (int j = 0; j < n; j++) {
+    for (int j = 0; j < n; j++)
+    {
       fftcoeff1_ext[i][j] = fftcoeff1[slot_index][i][j];
       fftcoeff1_ext[i][j + n] = fftcoeff1[slot_index][i][j];
     }
@@ -2174,21 +2581,25 @@ void Bootstrapper::sfl_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext
   bsgs_linear_transform(rtncipher, cipher, totlen1, 1, logn + 1, fftcoeff1_ext);
 }
 
-void Bootstrapper::sfl_full_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_full_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int totlen2 = (1 << logn) - 1;
   rotated_bsgs_linear_transform(rtncipher, cipher, totlen2, 1, logn, fftcoeff2[slot_index]);
 }
 
-void Bootstrapper::sflinv_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int totlen1 = (1 << logn) - 1;
   rotated_bsgs_linear_transform(rtncipher, cipher, totlen1, 1, logn, invfftcoeff1[slot_index]);
 }
 
-void Bootstrapper::sflinv_one_depth_more_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_one_depth_more_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int totlen1 = (1 << logn) - 1;
   rotated_nobsgs_linear_transform(rtncipher, cipher, totlen1, logn, invfftcoeff1[slot_index]);
 }
-void Bootstrapper::sfl(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = floor(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2207,8 +2618,10 @@ void Bootstrapper::sfl(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) 
   for (int i = 0; i < 2 * totlen2 + 1; i++)
     fftcoeff2_scale[i].resize(2 * n);
 
-  for (int i = 0; i < 2 * totlen2 + 1; i++) {
-    for (int j = 0; j < 2 * n; j++) {
+  for (int i = 0; i < 2 * totlen2 + 1; i++)
+  {
+    for (int j = 0; j < 2 * n; j++)
+    {
       fftcoeff2_scale[i][j] = fftcoeff2[slot_index][i][j] * curr_mod * mod_zero * final_scale / (tmpct.scale() * tmpct.scale() * initial_scale);
     }
   }
@@ -2218,7 +2631,8 @@ void Bootstrapper::sfl(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) 
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sfl_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = floor(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2236,8 +2650,10 @@ void Bootstrapper::sfl_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cip
   for (int i = 0; i < totlen2 + 1; i++)
     fftcoeff2_scale[i].resize(n);
 
-  for (int i = 0; i < totlen2 + 1; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < totlen2 + 1; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       fftcoeff2_scale[i][j] = fftcoeff2[slot_index][i][j] * curr_mod * mod_zero * final_scale / (tmpct.scale() * tmpct.scale() * initial_scale);
     }
   }
@@ -2247,7 +2663,8 @@ void Bootstrapper::sfl_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cip
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sflinv(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = ceil(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2260,7 +2677,8 @@ void Bootstrapper::sflinv(PhantomCiphertext &rtncipher, PhantomCiphertext &ciphe
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sflinv_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = ceil(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2272,7 +2690,8 @@ void Bootstrapper::sflinv_full(PhantomCiphertext &rtncipher, PhantomCiphertext &
   bsgs_linear_transform(rtncipher, tmpct, totlen2, 1, logn, invfftcoeff2[slot_index]);
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
-void Bootstrapper::sfl_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {  // not yet
+void Bootstrapper::sfl_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{ // not yet
   int div_part3 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part3) / 2.0);
   int div_part1 = logn - div_part3 - div_part2;
@@ -2303,8 +2722,10 @@ void Bootstrapper::sfl_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher
   for (int i = 0; i < 2 * totlen3 + 1; i++)
     fftcoeff3_scale[i].resize(2 * n);
 
-  for (int i = 0; i < 2 * totlen3 + 1; i++) {
-    for (int j = 0; j < 2 * n; j++) {
+  for (int i = 0; i < 2 * totlen3 + 1; i++)
+  {
+    for (int j = 0; j < 2 * n; j++)
+    {
       fftcoeff3_scale[i][j] = fftcoeff3[slot_index][i][j] * curr_mod * mod_zero * final_scale / (tmpct2.scale() * tmpct2.scale() * initial_scale);
     }
   }
@@ -2313,7 +2734,8 @@ void Bootstrapper::sfl_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sfl_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int div_part3 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part3) / 2.0);
   int div_part1 = logn - div_part3 - div_part2;
@@ -2343,8 +2765,10 @@ void Bootstrapper::sfl_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &c
   for (int i = 0; i < totlen2 + 1; i++)
     fftcoeff3_scale[i].resize(n);
 
-  for (int i = 0; i < totlen2 + 1; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < totlen2 + 1; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       fftcoeff3_scale[i][j] = fftcoeff3[slot_index][i][j] * curr_mod * mod_zero * final_scale / (tmpct2.scale() * tmpct2.scale() * initial_scale);
     }
   }
@@ -2352,7 +2776,8 @@ void Bootstrapper::sfl_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &c
   rotated_bsgs_linear_transform(rtncipher, tmpct2, totlen3, basicstep3, logn, fftcoeff3_scale);
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
-void Bootstrapper::sfl_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {  // not yet
+void Bootstrapper::sfl_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{ // not yet
   int div_part3 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part3) / 2.0);
   int div_part1 = logn - div_part3 - div_part2;
@@ -2382,8 +2807,10 @@ void Bootstrapper::sfl_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &c
   for (int i = 0; i < 2 * totlen3 + 1; i++)
     fftcoeff3_scale[i].resize(2 * n);
 
-  for (int i = 0; i < 2 * totlen3 + 1; i++) {
-    for (int j = 0; j < 2 * n; j++) {
+  for (int i = 0; i < 2 * totlen3 + 1; i++)
+  {
+    for (int j = 0; j < 2 * n; j++)
+    {
       fftcoeff3_scale[i][j] = fftcoeff3[slot_index][i][j] * curr_mod * mod_zero * final_scale / (2 * tmpct2.scale() * tmpct2.scale() * initial_scale);
     }
   }
@@ -2392,7 +2819,8 @@ void Bootstrapper::sfl_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &c
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sfl_full_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_full_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int div_part3 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part3) / 2.0);
   int div_part1 = logn - div_part3 - div_part2;
@@ -2422,8 +2850,10 @@ void Bootstrapper::sfl_full_half_3(PhantomCiphertext &rtncipher, PhantomCipherte
   for (int i = 0; i < totlen2 + 1; i++)
     fftcoeff3_scale[i].resize(n);
 
-  for (int i = 0; i < totlen2 + 1; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < totlen2 + 1; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       fftcoeff3_scale[i][j] = fftcoeff3[slot_index][i][j] * curr_mod * mod_zero * final_scale / (2 * tmpct2.scale() * tmpct2.scale() * initial_scale);
     }
   }
@@ -2432,7 +2862,8 @@ void Bootstrapper::sfl_full_half_3(PhantomCiphertext &rtncipher, PhantomCipherte
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sflinv_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {  // not yet
+void Bootstrapper::sflinv_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{ // not yet
   int div_part1 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part1) / 2.0);
   int div_part3 = logn - div_part1 - div_part2;
@@ -2457,7 +2888,8 @@ void Bootstrapper::sflinv_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cip
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sflinv_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int div_part1 = floor(logn / 3.0);
   int div_part2 = floor((logn - div_part1) / 2.0);
   int div_part3 = logn - div_part1 - div_part2;
@@ -2480,7 +2912,8 @@ void Bootstrapper::sflinv_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext
   ckks->evaluator.rescale_to_next_inplace(rtncipher);
 }
 
-void Bootstrapper::sfl_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = floor(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2492,7 +2925,8 @@ void Bootstrapper::sfl_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext 
   bsgs_linear_transform(rtncipher, tmpct, totlen2, basicstep, logn + 1, fftcoeff2[slot_index]);
 }
 
-void Bootstrapper::sfl_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sfl_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = floor(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2504,7 +2938,8 @@ void Bootstrapper::sfl_full_hoisting(PhantomCiphertext &rtncipher, PhantomCipher
   rotated_bsgs_linear_transform(rtncipher, tmpct, totlen2, basicstep, logn, fftcoeff2[slot_index]);
 }
 
-void Bootstrapper::sflinv_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = ceil(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2515,7 +2950,8 @@ void Bootstrapper::sflinv_hoisting(PhantomCiphertext &rtncipher, PhantomCipherte
   bsgs_linear_transform(rtncipher, tmpct, totlen2, 1, logn + 1, invfftcoeff2[slot_index]);
 }
 
-void Bootstrapper::sflinv_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::sflinv_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   int split_point = ceil(logn / 2.0);
   int totlen1 = (1 << split_point) - 1;
   int totlen2 = (1 << (logn - split_point)) - 1;
@@ -2526,26 +2962,30 @@ void Bootstrapper::sflinv_full_hoisting(PhantomCiphertext &rtncipher, PhantomCip
   bsgs_linear_transform(rtncipher, tmpct, totlen2, 1, logn, invfftcoeff2[slot_index]);
 }
 
-void Bootstrapper::coefftoslot(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sflinv(tmpct1, cipher);
   ckks->evaluator.complex_conjugate(tmpct1, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::slottocoeff(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::slottocoeff(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sfl(tmpct1, cipher);
   ckks->evaluator.rotate_vector(tmpct1, n, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::coefftoslot_full(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_full(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3, tmpct4, tmpct5;
   sflinv_full(tmpct1, cipher);
   complex<double> iunit(0.0, 1.0);
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] -= iunit;
   }
   PhantomPlaintext tmpplain;
@@ -2558,12 +2998,14 @@ void Bootstrapper::coefftoslot_full(PhantomCiphertext &rtncipher1, PhantomCipher
   ckks->evaluator.add_reduced_error(tmpct1, tmpct4, rtncipher1);
   ckks->evaluator.add_reduced_error(tmpct2, tmpct3, rtncipher2);
 }
-void Bootstrapper::slottocoeff_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2) {
+void Bootstrapper::slottocoeff_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] += iunit;
   }
 
@@ -2578,7 +3020,8 @@ void Bootstrapper::slottocoeff_full(PhantomCiphertext &rtncipher, PhantomCiphert
 }
 
 // NOTE:
-void Bootstrapper::coefftoslot_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sflinv_3(tmpct1, cipher);
   ckks->evaluator.complex_conjugate(tmpct1, *(ckks->galois_keys), tmpct2);
@@ -2586,26 +3029,30 @@ void Bootstrapper::coefftoslot_3(PhantomCiphertext &rtncipher, PhantomCiphertext
 }
 
 // NOTE:
-void Bootstrapper::slottocoeff_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::slottocoeff_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sfl_3(tmpct1, cipher);
   ckks->evaluator.rotate_vector(tmpct1, n, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::slottocoeff_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::slottocoeff_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sfl_half_3(tmpct1, cipher);
   ckks->evaluator.rotate_vector(tmpct1, n, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::coefftoslot_full_3(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_full_3(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3, tmpct4, tmpct5;
   sflinv_full_3(tmpct1, cipher);
   complex<double> iunit(0.0, 1.0);
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] -= iunit;
   }
   PhantomPlaintext tmpplain;
@@ -2619,12 +3066,14 @@ void Bootstrapper::coefftoslot_full_3(PhantomCiphertext &rtncipher1, PhantomCiph
   ckks->evaluator.add_reduced_error(tmpct1, tmpct4, rtncipher1);
   ckks->evaluator.add_reduced_error(tmpct2, tmpct3, rtncipher2);
 }
-void Bootstrapper::slottocoeff_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2) {
+void Bootstrapper::slottocoeff_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] += iunit;
   }
 
@@ -2637,12 +3086,14 @@ void Bootstrapper::slottocoeff_full_3(PhantomCiphertext &rtncipher, PhantomCiphe
 
   sfl_full_3(rtncipher, tmpct3);
 }
-void Bootstrapper::slottocoeff_full_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2) {
+void Bootstrapper::slottocoeff_full_half_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] += iunit;
   }
 
@@ -2655,26 +3106,30 @@ void Bootstrapper::slottocoeff_full_half_3(PhantomCiphertext &rtncipher, Phantom
 
   sfl_full_half_3(rtncipher, tmpct3);
 }
-void Bootstrapper::coefftoslot_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sflinv_hoisting(tmpct1, cipher);
   ckks->evaluator.complex_conjugate(tmpct1, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::slottocoeff_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::slottocoeff_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sfl_hoisting(tmpct1, cipher);
   ckks->evaluator.rotate_vector(tmpct1, n, *(ckks->galois_keys), tmpct2);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
 
-void Bootstrapper::coefftoslot_full_hoisting(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_full_hoisting(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3, tmpct4, tmpct5;
   sflinv_full_hoisting(tmpct1, cipher);
   complex<double> iunit(0.0, 1.0);
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] -= iunit;
   }
   PhantomPlaintext tmpplain;
@@ -2687,12 +3142,14 @@ void Bootstrapper::coefftoslot_full_hoisting(PhantomCiphertext &rtncipher1, Phan
   ckks->evaluator.add_reduced_error(tmpct1, tmpct4, rtncipher1);
   ckks->evaluator.add_reduced_error(tmpct2, tmpct3, rtncipher2);
 }
-void Bootstrapper::slottocoeff_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2) {
+void Bootstrapper::slottocoeff_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
-  for (int i = 0; i < Nh; i++) {
+  for (int i = 0; i < Nh; i++)
+  {
     tmpvec[i] += iunit;
   }
 
@@ -2706,15 +3163,18 @@ void Bootstrapper::slottocoeff_full_hoisting(PhantomCiphertext &rtncipher, Phant
   sfl_full_hoisting(rtncipher, tmpct3);
 }
 
-void Bootstrapper::coefftoslot_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   sflinv_one_depth(tmpct1, cipher);
   complex<double> iunit(0.0, 1.0);
   vector<complex<double>> tmpvec(Nh, 0);
   int repeatcount = Nh / (2 * n);
 
-  for (int i = 0; i < repeatcount; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < repeatcount; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       tmpvec[i * (2 * n) + j] = 0.5;
       tmpvec[i * (2 * n) + j + n] -= 0.5 * iunit;
     }
@@ -2724,14 +3184,17 @@ void Bootstrapper::coefftoslot_one_depth(PhantomCiphertext &rtncipher, PhantomCi
   ckks->evaluator.complex_conjugate(tmpct2, *(ckks->galois_keys), tmpct1);
   ckks->evaluator.add_reduced_error(tmpct1, tmpct2, rtncipher);
 }
-void Bootstrapper::slottocoeff_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::slottocoeff_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
   int repeatcount = Nh / (2 * n);
-  for (int i = 0; i < repeatcount; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < repeatcount; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       tmpvec[i * (2 * n) + j] = 1.0;
       tmpvec[i * (2 * n) + j + n] += iunit;
     }
@@ -2745,14 +3208,17 @@ void Bootstrapper::slottocoeff_one_depth(PhantomCiphertext &rtncipher, PhantomCi
 
 void Bootstrapper::coefftoslot_full_one_depth(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher) {}
 
-void Bootstrapper::slottocoeff_full_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2) {
+void Bootstrapper::slottocoeff_full_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher1, PhantomCiphertext &cipher2)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3;
   complex<double> iunit(0.0, 1.0);
 
   vector<complex<double>> tmpvec(Nh, 0);
   int repeatcount = Nh / (2 * n);
-  for (int i = 0; i < repeatcount; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < repeatcount; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       tmpvec[i * (2 * n) + j] += iunit;
       tmpvec[i * (2 * n) + j + n] += iunit;
     }
@@ -2766,15 +3232,18 @@ void Bootstrapper::slottocoeff_full_one_depth(PhantomCiphertext &rtncipher, Phan
   sfl_full_one_depth(rtncipher, tmpct3);
 }
 
-void Bootstrapper::coefftoslot_full_mul_first(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher) {
+void Bootstrapper::coefftoslot_full_mul_first(PhantomCiphertext &rtncipher1, PhantomCiphertext &rtncipher2, PhantomCiphertext &cipher)
+{
   PhantomCiphertext tmpct1, tmpct2, tmpct3, tmpct4, tmpct5;
   sflinv_one_depth_more_depth(tmpct1, cipher);
   complex<double> iunit(0.0, 1.0);
   vector<complex<double>> tmpvec(Nh, 0);
   int repeatcount = Nh / (2 * n);
 
-  for (int i = 0; i < repeatcount; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < repeatcount; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       tmpvec[i * (2 * n) + j] = -0.5 * iunit;
       tmpvec[i * (2 * n) + j + n] = -0.5 * iunit;
     }
@@ -2783,8 +3252,10 @@ void Bootstrapper::coefftoslot_full_mul_first(PhantomCiphertext &rtncipher1, Pha
   ckks->evaluator.multiply_vector_reduced_error(tmpct1, tmpvec, tmpct2);
   vector<complex<double>> tmpvec_1(Nh, 0);
 
-  for (int i = 0; i < repeatcount; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int i = 0; i < repeatcount; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
       tmpvec_1[i * (2 * n) + j] = 0.5;
       tmpvec_1[i * (2 * n) + j + n] = 0.5;
     }
@@ -2798,28 +3269,35 @@ void Bootstrapper::coefftoslot_full_mul_first(PhantomCiphertext &rtncipher1, Pha
 }
 
 __global__ void kernel_modraise_inplace(uint64_t *poly_dest, const uint64_t *poly_src_zero, const uint64_t modulus,
-                                        const uint64_t minus_q0_modulus, size_t N, uint64_t q0) {
+                                        const uint64_t minus_q0_modulus, size_t N, uint64_t q0)
+{
   size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < N) {
+  if (i < N)
+  {
     auto q = modulus;
     poly_dest[i] = poly_src_zero[i] % q;
-    if (poly_src_zero[i] > (q0 >> 1)) {
+    if (poly_src_zero[i] > (q0 >> 1))
+    {
       poly_dest[i] += minus_q0_modulus;
       poly_dest[i] -= (poly_dest[i] >= q) ? q : 0;
     }
   }
 }
 
-void Bootstrapper::modraise_inplace(PhantomCiphertext &cipher) {
-  if (cipher.size() != 2) {
+void Bootstrapper::modraise_inplace(PhantomCiphertext &cipher)
+{
+  if (cipher.size() != 2)
+  {
     throw invalid_argument("Ciphertexts of size 2 are supported only!");
   }
 
-  if (cipher.coeff_modulus_size() != 1) {
+  if (cipher.coeff_modulus_size() != 1)
+  {
     throw invalid_argument("Ciphertexts in the lowest level are supported only!");
   }
 
-  if (cipher.is_ntt_form()) {
+  if (cipher.is_ntt_form())
+  {
     ckks->evaluator.transform_from_ntt_inplace(cipher);
   }
 
@@ -2834,7 +3312,8 @@ void Bootstrapper::modraise_inplace(PhantomCiphertext &cipher) {
   vector<uint64_t> minus_q0(mod_count);
   minus_q0[0] = 0;
 
-  for (size_t l = 1; l < mod_count; l++) {
+  for (size_t l = 1; l < mod_count; l++)
+  {
     minus_q0[l] = modulus[l].value() - q0 % modulus[l].value();
   }
 
@@ -2845,11 +3324,13 @@ void Bootstrapper::modraise_inplace(PhantomCiphertext &cipher) {
   PhantomCiphertext cipher_copy = cipher;
 
   uint64_t gridDimGlb = N / blockDimGlb.x;
-  for (size_t poly_idx = 0; poly_idx < ciphertext_size; poly_idx++) {
+  for (size_t poly_idx = 0; poly_idx < ciphertext_size; poly_idx++)
+  {
     const auto rns_poly_src = cipher_copy.data() + poly_idx * rns_coeff_count;
     const auto rns_poly_dest = cipher.data() + poly_idx * rns_coeff_count;
 
-    for (size_t j = 0; j < mod_count; j++) {
+    for (size_t j = 0; j < mod_count; j++)
+    {
       const auto poly_dest = rns_poly_dest + j * N;
       kernel_modraise_inplace<<<gridDimGlb, blockDimGlb, 0, stream>>>(
           poly_dest, rns_poly_src, modulus[j].value(), minus_q0[j], N, q0);
@@ -2859,7 +3340,8 @@ void Bootstrapper::modraise_inplace(PhantomCiphertext &cipher) {
   ckks->evaluator.transform_to_ntt_inplace(cipher);
 }
 
-void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -2868,16 +3350,19 @@ void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphert
 
   std::cout << "Subsum..." << endl;
   PhantomCiphertext rot;
-  for (long i = logn; i < logNh; ++i) {
+  for (long i = logn; i < logNh; ++i)
+  {
     ckks->evaluator.rotate_vector(cipher, (1 << i), *(ckks->galois_keys), rot);
     // ckks->evaluator.add_inplace_original(cipher, rot);
     ckks->evaluator.add_inplace(cipher, rot);
   }
 
   PhantomCiphertext rtn;
-  if (logn == 0) {
+  if (logn == 0)
+  {
     vector<complex<double>> cts_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         cts_vec[i] = 1.0 / (2.0 * boundary_K * (1 << logNh));
       else
@@ -2891,7 +3376,8 @@ void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphert
     ckks->evaluator.add_inplace_reduced_error(rtn, conjrtn);
   }
 
-  else {
+  else
+  {
     std::cout << "Coefftoslot..." << endl;
     coefftoslot(rtn, cipher);
   }
@@ -2901,7 +3387,8 @@ void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphert
   mod_reducer->modular_reduction(modrtn, rtn);
   std::cout << "mod end" << endl;
 
-  if (logn == 0) {
+  if (logn == 0)
+  {
     const auto modulus = ckks->context->first_context_data().parms().coeff_modulus();
     auto curr_level = ckks->context->get_context_data(modrtn.params_id()).chain_depth();
 
@@ -2911,7 +3398,8 @@ void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphert
     double scale_adj = curr_mod * mod_zero * final_scale / (modrtn.scale() * modrtn.scale() * initial_scale);
 
     vector<complex<double>> stc_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         stc_vec[i] = scale_adj;
       else
@@ -2925,14 +3413,16 @@ void Bootstrapper::bootstrap_sparse(PhantomCiphertext &rtncipher, PhantomCiphert
     ckks->evaluator.add_inplace_reduced_error(rtncipher, rotrtncipher);
   }
 
-  else {
+  else
+  {
     std::cout << "Slottocoeff..." << endl;
     slottocoeff(rtncipher, modrtn);
   }
   rtncipher.scale() = final_scale;
 }
 
-void Bootstrapper::bootstrap_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_full(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   // // for debugging
   // chrono::high_resolution_clock::time_point start, end;
   // chrono::microseconds diff;
@@ -2984,7 +3474,8 @@ void Bootstrapper::bootstrap_full(PhantomCiphertext &rtncipher, PhantomCiphertex
   rtncipher.scale() = final_scale;
 }
 
-void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   // ModRaise
   auto timer = Timer();
 
@@ -3002,7 +3493,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
 
   std::cout << "Subsum... ";
   PhantomCiphertext rot;
-  for (auto i = logn; i < logNh; i++) {
+  for (auto i = logn; i < logNh; i++)
+  {
     ckks->evaluator.rotate_vector(cipher, (1 << i), *(ckks->galois_keys), rot);
     ckks->evaluator.add_inplace(cipher, rot);
   }
@@ -3012,9 +3504,11 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
   // ckks->print_decrypted_ct(cipher, 10);
 
   PhantomCiphertext rtn;
-  if (logn == 0) {
+  if (logn == 0)
+  {
     vector<complex<double>> cts_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         cts_vec[i] = 1.0 / (2.0 * boundary_K * (1 << logNh));
       else
@@ -3029,7 +3523,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
   }
 
   // Coefficient to Slots
-  else {
+  else
+  {
     timer.start();
 
     std::cout << "Coeff-to-slot... ";
@@ -3051,7 +3546,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
   std::cout << timer.duration<milliseconds>() << "ms\n";
   // ckks->print_decrypted_ct(modrtn, 10);
 
-  if (logn == 0) {
+  if (logn == 0)
+  {
     const auto modulus = ckks->context->first_context_data().parms().coeff_modulus();
     auto curr_level = ckks->context->get_context_data(modrtn.params_id()).chain_depth();
 
@@ -3061,7 +3557,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
     double scale_adj = curr_mod * mod_zero * final_scale / (modrtn.scale() * modrtn.scale() * initial_scale);
 
     vector<complex<double>> stc_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         stc_vec[i] = scale_adj;
       else
@@ -3076,7 +3573,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
   }
 
   // Slots to Coefficients
-  else {
+  else
+  {
     timer.start();
 
     std::cout << "Slot-to-coeff... ";
@@ -3090,7 +3588,8 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
   rtncipher.scale() = final_scale;
 }
 
-void Bootstrapper::bootstrap_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3112,7 +3611,8 @@ void Bootstrapper::bootstrap_full_3(PhantomCiphertext &rtncipher, PhantomCiphert
   rtncipher.scale() = final_scale;
 }
 
-void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3121,16 +3621,19 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
 
   std::cout << "Subsum..." << endl;
   PhantomCiphertext rot;
-  for (long i = logn; i < logNh; ++i) {
+  for (long i = logn; i < logNh; ++i)
+  {
     ckks->evaluator.rotate_vector(cipher, (1 << i), *(ckks->galois_keys), rot);
     // ckks->evaluator.add_inplace_original(cipher, rot);
     ckks->evaluator.add_inplace(cipher, rot);
   }
 
   PhantomCiphertext rtn;
-  if (logn == 0) {
+  if (logn == 0)
+  {
     vector<complex<double>> cts_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         cts_vec[i] = 1.0 / (2.0 * boundary_K * (1 << logNh));
       else
@@ -3144,7 +3647,8 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
     ckks->evaluator.add_inplace_reduced_error(rtn, conjrtn);
   }
 
-  else {
+  else
+  {
     std::cout << "Coefftoslot...5" << endl;
     coefftoslot_3(rtn, cipher);
   }
@@ -3153,7 +3657,8 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
   PhantomCiphertext modrtn;
   mod_reducer->modular_reduction(modrtn, rtn);
 
-  if (logn == 0) {
+  if (logn == 0)
+  {
     const auto modulus = ckks->context->first_context_data().parms().coeff_modulus();
     auto curr_level = ckks->context->get_context_data(modrtn.params_id()).chain_depth();
 
@@ -3163,7 +3668,8 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
     double scale_adj = curr_mod * mod_zero * final_scale / (modrtn.scale() * modrtn.scale() * initial_scale);
 
     vector<complex<double>> stc_vec(Nh, 0);
-    for (int i = 0; i < Nh; i++) {
+    for (int i = 0; i < Nh; i++)
+    {
       if (i % 2 == 0)
         stc_vec[i] = scale_adj;
       else
@@ -3177,7 +3683,8 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
     ckks->evaluator.add_inplace_reduced_error(rtncipher, rotrtncipher);
   }
 
-  else {
+  else
+  {
     std::cout << "Slottocoeff..." << endl;
     slottocoeff_half_3(rtncipher, modrtn);
   }
@@ -3187,7 +3694,8 @@ void Bootstrapper::bootstrap_sparse_real_3(PhantomCiphertext &rtncipher, Phantom
   ckks->evaluator.add_inplace_reduced_error(rtncipher, conjct);
 }
 
-void Bootstrapper::bootstrap_full_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_full_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3212,7 +3720,8 @@ void Bootstrapper::bootstrap_full_real_3(PhantomCiphertext &rtncipher, PhantomCi
   ckks->evaluator.add_inplace_reduced_error(rtncipher, conjct);
 }
 
-void Bootstrapper::bootstrap_sparse_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_sparse_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3221,7 +3730,8 @@ void Bootstrapper::bootstrap_sparse_hoisting(PhantomCiphertext &rtncipher, Phant
 
   std::cout << "Subsum..." << endl;
   PhantomCiphertext rot;
-  for (long i = logn; i < logNh; ++i) {
+  for (long i = logn; i < logNh; ++i)
+  {
     ckks->evaluator.rotate_vector(cipher, (1 << i), *(ckks->galois_keys), rot);
     // ckks->evaluator.add_inplace_original(cipher, rot);
     ckks->evaluator.add_inplace(cipher, rot);
@@ -3229,9 +3739,9 @@ void Bootstrapper::bootstrap_sparse_hoisting(PhantomCiphertext &rtncipher, Phant
 
   PhantomPlaintext tmpplain;
 
-  ckks->encoder.encode(1.0 / (boundary_K * (1 << (logNh - logn))), cipher.scale(), tmpplain);  // scale of tmpplain = Delta
+  ckks->encoder.encode(1.0 / (boundary_K * (1 << (logNh - logn))), cipher.scale(), tmpplain); // scale of tmpplain = Delta
   ckks->evaluator.mod_switch_to_inplace(tmpplain, cipher.params_id());
-  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain);  // scale of cipher = Delta^2
+  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain); // scale of cipher = Delta^2
 
   // Lazy rescaling from now on: No rescaling!!
   // NO NEED TO USE "ORIGINAL" METHODS OF EVALUATOR FROM NOW ON, AS THE SCALING FACTOR IS Delta^2
@@ -3247,7 +3757,8 @@ void Bootstrapper::bootstrap_sparse_hoisting(PhantomCiphertext &rtncipher, Phant
   std::cout << "Slottocoeff..." << endl;
   slottocoeff_hoisting(rtncipher, modrtn);
 }
-void Bootstrapper::bootstrap_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_full_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3256,9 +3767,9 @@ void Bootstrapper::bootstrap_full_hoisting(PhantomCiphertext &rtncipher, Phantom
 
   PhantomPlaintext tmpplain;
 
-  ckks->encoder.encode(1.0 / boundary_K, cipher.scale(), tmpplain);  // scale of tmpplain = Delta
+  ckks->encoder.encode(1.0 / boundary_K, cipher.scale(), tmpplain); // scale of tmpplain = Delta
   ckks->evaluator.mod_switch_to_inplace(tmpplain, cipher.params_id());
-  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain);  // scale of cipher = Delta^2
+  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain); // scale of cipher = Delta^2
 
   // Lazy rescaling from now on: No rescaling!!
   // NO NEED TO USE "ORIGINAL" METHODS OF EVALUATOR FROM NOW ON, AS THE SCALING FACTOR IS Delta^2
@@ -3276,7 +3787,8 @@ void Bootstrapper::bootstrap_full_hoisting(PhantomCiphertext &rtncipher, Phantom
   slottocoeff_full_hoisting(rtncipher, modrtn1, modrtn2);
 }
 
-void Bootstrapper::bootstrap_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_one_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3285,7 +3797,8 @@ void Bootstrapper::bootstrap_one_depth(PhantomCiphertext &rtncipher, PhantomCiph
 
   std::cout << "Subsum..." << endl;
   PhantomCiphertext rot;
-  for (long i = logn; i < logNh; ++i) {
+  for (long i = logn; i < logNh; ++i)
+  {
     ckks->evaluator.rotate_vector(cipher, (1 << i), *(ckks->galois_keys), rot);
     // ckks->evaluator.add_inplace_original(cipher, rot);
     ckks->evaluator.add_inplace(cipher, rot);
@@ -3293,9 +3806,9 @@ void Bootstrapper::bootstrap_one_depth(PhantomCiphertext &rtncipher, PhantomCiph
 
   PhantomPlaintext tmpplain;
 
-  ckks->encoder.encode(1.0 / (boundary_K * (1 << (logNh - logn))), cipher.scale(), tmpplain);  // scale of tmpplain = Delta
+  ckks->encoder.encode(1.0 / (boundary_K * (1 << (logNh - logn))), cipher.scale(), tmpplain); // scale of tmpplain = Delta
   ckks->evaluator.mod_switch_to_inplace(tmpplain, cipher.params_id());
-  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain);  // scale of cipher = Delta^2
+  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain); // scale of cipher = Delta^2
 
   // Lazy rescaling from now on: No rescaling!!
   // NO NEED TO USE "ORIGINAL" METHODS OF EVALUATOR FROM NOW ON, AS THE SCALING FACTOR IS Delta^2
@@ -3312,7 +3825,8 @@ void Bootstrapper::bootstrap_one_depth(PhantomCiphertext &rtncipher, PhantomCiph
   slottocoeff_one_depth(rtncipher, modrtn);
 }
 
-void Bootstrapper::bootstrap_more_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_more_depth(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
@@ -3321,9 +3835,9 @@ void Bootstrapper::bootstrap_more_depth(PhantomCiphertext &rtncipher, PhantomCip
 
   PhantomPlaintext tmpplain;
 
-  ckks->encoder.encode(1.0 / boundary_K, cipher.scale(), tmpplain);  // scale of tmpplain = Delta
+  ckks->encoder.encode(1.0 / boundary_K, cipher.scale(), tmpplain); // scale of tmpplain = Delta
   ckks->evaluator.mod_switch_to_inplace(tmpplain, cipher.params_id());
-  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain);  // scale of cipher = Delta^2
+  ckks->evaluator.multiply_plain_inplace(cipher, tmpplain); // scale of cipher = Delta^2
 
   // Lazy rescaling from now on: No rescaling!!
   // NO NEED TO USE "ORIGINAL" METHODS OF EVALUATOR FROM NOW ON, AS THE SCALING FACTOR IS Delta^2
@@ -3341,7 +3855,8 @@ void Bootstrapper::bootstrap_more_depth(PhantomCiphertext &rtncipher, PhantomCip
   slottocoeff_full_one_depth(rtncipher, modrtn1, modrtn2);
 }
 
-void Bootstrapper::bootstrap(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   initial_scale = cipher.scale();
   if (logn == logNh)
     bootstrap_full(rtncipher, cipher);
@@ -3349,14 +3864,17 @@ void Bootstrapper::bootstrap(PhantomCiphertext &rtncipher, PhantomCiphertext &ci
     bootstrap_sparse(rtncipher, cipher);
 }
 
-void Bootstrapper::bootstrap_inplace(PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_inplace(PhantomCiphertext &cipher)
+{
   PhantomCiphertext rtncipher;
   bootstrap(rtncipher, cipher);
   cipher = rtncipher;
 }
 
-void Bootstrapper::bootstrap_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
-  if (rtncipher.chain_index()) {
+void Bootstrapper::bootstrap_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
+  if (rtncipher.chain_index())
+  {
     throw invalid_argument("Return cipher should initially be a new ciphertext.");
   }
 
@@ -3369,13 +3887,15 @@ void Bootstrapper::bootstrap_3(PhantomCiphertext &rtncipher, PhantomCiphertext &
   cudaStreamSynchronize(cipher.data_ptr().get_stream());
 }
 
-void Bootstrapper::bootstrap_inplace_3(PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_inplace_3(PhantomCiphertext &cipher)
+{
   PhantomCiphertext rtncipher;
   bootstrap_3(rtncipher, cipher);
   cipher = rtncipher;
 }
 
-void Bootstrapper::bootstrap_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_real_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   initial_scale = cipher.scale();
   if (logn == logNh)
     bootstrap_full_real_3(rtncipher, cipher);
@@ -3383,20 +3903,23 @@ void Bootstrapper::bootstrap_real_3(PhantomCiphertext &rtncipher, PhantomCiphert
     bootstrap_sparse_real_3(rtncipher, cipher);
 }
 
-void Bootstrapper::bootstrap_inplace_real_3(PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_inplace_real_3(PhantomCiphertext &cipher)
+{
   PhantomCiphertext rtncipher;
   bootstrap_real_3(rtncipher, cipher);
   cipher = rtncipher;
 }
 
-void Bootstrapper::bootstrap_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_hoisting(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
+{
   if (logn == logNh)
     bootstrap_full_hoisting(rtncipher, cipher);
   else
     bootstrap_sparse_hoisting(rtncipher, cipher);
 }
 
-void Bootstrapper::bootstrap_inplace_hoisting(PhantomCiphertext &cipher) {
+void Bootstrapper::bootstrap_inplace_hoisting(PhantomCiphertext &cipher)
+{
   PhantomCiphertext rtncipher;
   bootstrap_hoisting(rtncipher, cipher);
   cipher = rtncipher;
