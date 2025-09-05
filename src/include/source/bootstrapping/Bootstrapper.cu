@@ -3590,22 +3590,22 @@ void Bootstrapper::bootstrap_sparse_3(PhantomCiphertext &rtncipher, PhantomCiphe
 
 void Bootstrapper::bootstrap_full_3(PhantomCiphertext &rtncipher, PhantomCiphertext &cipher)
 {
-  std::cout << "Modulus Raising..." << endl;
+  // std::cout << "Modulus Raising..." << endl;
   modraise_inplace(cipher);
 
   const auto modulus = ckks->context->first_context_data().parms().coeff_modulus();
   cipher.scale() = ((double)modulus[0].value());
 
-  std::cout << "Coefftoslot...4" << endl;
+  // std::cout << "Coefftoslot...4" << endl;
   PhantomCiphertext rtn1, rtn2;
   coefftoslot_full_3(rtn1, rtn2, cipher);
 
-  std::cout << "Modular reduction..." << endl;
+  // std::cout << "Modular reduction..." << endl;
   PhantomCiphertext modrtn1, modrtn2;
   mod_reducer->modular_reduction(modrtn1, rtn1);
   mod_reducer->modular_reduction(modrtn2, rtn2);
 
-  std::cout << "Slottocoeff..." << endl;
+  // std::cout << "Slottocoeff..." << endl;
   slottocoeff_full_3(rtncipher, modrtn1, modrtn2);
 
   rtncipher.scale() = final_scale;
