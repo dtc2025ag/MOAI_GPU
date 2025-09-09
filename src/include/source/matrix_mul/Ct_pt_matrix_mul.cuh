@@ -299,13 +299,13 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     stream_pool[0] = *phantom::util::global_variables::default_stream;
   }
 
-  cudaEvent_t ev_start, ev_stop;
-  cudaEventCreate(&ev_start);
-  cudaEventCreate(&ev_stop);
+  // cudaEvent_t ev_start, ev_stop;
+  // cudaEventCreate(&ev_start);
+  // cudaEventCreate(&ev_stop);
 
   // 可选：单独的计时流，避免用默认流 0
-  cudaStream_t timing_stream = nullptr;
-  cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
+  // cudaStream_t timing_stream = nullptr;
+  // cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
   // CKKSEncoder encoder(seal_context);
   // Evaluator evaluator(seal_context, encoder);
   // PhantomCKKSEncoder phantom_encoder(context);
@@ -335,15 +335,15 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
       X_local[static_cast<size_t>(j)] = deep_copy_cipher(enc_X[j], context, stream);
     }
 
-    cudaStreamWaitEvent(stream.get_stream(), ev_start, 0);
+    // cudaStreamWaitEvent(stream.get_stream(), ev_start, 0);
 
     // 确保所有线程都已经设置好 wait 之后再开枪
-#pragma omp barrier
-#pragma omp single
-    {
-      // 起跑枪：现在才开始计时，预处理不包含
-      cudaEventRecord(ev_start, timing_stream ? timing_stream : 0);
-    }
+// #pragma omp barrier
+// #pragma omp single
+//     {
+//       // 起跑枪：现在才开始计时，预处理不包含
+//       cudaEventRecord(ev_start, timing_stream ? timing_stream : 0);
+//     }
 
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)
@@ -397,26 +397,26 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
   }
 
   // 聚合所有 done 到计时流
-  for (int i = 0; i < nthreads; ++i)
-  {
-    cudaStreamWaitEvent(timing_stream ? timing_stream : 0, ev_done[i], 0);
-  }
+  // for (int i = 0; i < nthreads; ++i)
+  // {
+  //   cudaStreamWaitEvent(timing_stream ? timing_stream : 0, ev_done[i], 0);
+  // }
 
-  // 记录 stop 并计算时间
-  cudaEventRecord(ev_stop, timing_stream ? timing_stream : 0);
-  cudaEventSynchronize(ev_stop);
+  // // 记录 stop 并计算时间
+  // cudaEventRecord(ev_stop, timing_stream ? timing_stream : 0);
+  // cudaEventSynchronize(ev_stop);
 
-  float ms = 0.f;
-  cudaEventElapsedTime(&ms, ev_start, ev_stop);
-  cout << "Ct-Pt compute time = " << ms << " ms\n";
+  // float ms = 0.f;
+  // cudaEventElapsedTime(&ms, ev_start, ev_stop);
+  // cout << "Ct-Pt compute time = " << ms << " ms\n";
 
   // 清理
-  for (auto &e : ev_done)
-    cudaEventDestroy(e);
-  cudaEventDestroy(ev_start);
-  cudaEventDestroy(ev_stop);
-  if (timing_stream)
-    cudaStreamDestroy(timing_stream);
+  // for (auto &e : ev_done)
+  //   cudaEventDestroy(e);
+  // cudaEventDestroy(ev_start);
+  // cudaEventDestroy(ev_stop);
+  // if (timing_stream)
+  //   cudaStreamDestroy(timing_stream);
 
   // cudaDeviceSynchronize();
   return output;

@@ -95,6 +95,40 @@ PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
     return dst;
 }
 
+vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
+                                           const PhantomContext &context,
+                                           phantom::util::cuda_stream_wrapper &stream = *phantom::util::global_variables::default_stream)
+{
+    vector<PhantomCiphertext> dst(src.size());
+
+    for (size_t i = 0; i < src.size(); i++)
+    {
+        // 复制元数据
+        dst[i].set_chain_index(src[i].chain_index());
+        dst[i].set_poly_modulus_degree(src[i].poly_modulus_degree());
+        dst[i].set_coeff_modulus_size(src[i].coeff_modulus_size());
+        dst[i].set_scale(src[i].scale());
+        dst[i].set_correction_factor(src[i].correction_factor());
+        dst[i].set_ntt_form(src[i].is_ntt_form());
+        dst[i].SetNoiseScaleDeg(src[i].GetNoiseScaleDeg());
+
+        // 分配和源一样大小的缓冲
+        dst[i].reinit_like(src[i].size(),
+                           src[i].coeff_modulus_size(),
+                           src[i].poly_modulus_degree(),
+                           stream.get_stream());
+
+        // 真正拷贝显存数据
+        size_t count = src[i].size() * src[i].coeff_modulus_size() * src[i].poly_modulus_degree();
+        cudaMemcpyAsync(dst[i].data(), src[i].data(),
+                        count * sizeof(uint64_t),
+                        cudaMemcpyDeviceToDevice,
+                        stream.get_stream());
+    }
+
+    return dst;
+}
+
 // source code
 #include "source/bootstrapping/Bootstrapper.cuh"
 #include "source/utils.cuh"

@@ -80,7 +80,7 @@ vector<PhantomCiphertext> single_att_block(vector<PhantomCiphertext> & enc_X,
 
   vector<PhantomCiphertext> enc_X_v(num_col);
 
-  #pragma omp parallel for
+//   #pragma omp parallel for
 
   for (int i = 0; i < num_col; ++i){
       enc_X_v[i] = enc_X[i];
@@ -184,14 +184,14 @@ vector<PhantomCiphertext> single_att_block(vector<PhantomCiphertext> & enc_X,
 
 
     //softmax(QK^T)
-    // gettimeofday(&tstart1,NULL);
-    // vector<PhantomCiphertext> enc_softmax = softmax_boot(QK,bias_vec,input_num,context,
-    //     relin_keys,iter,sk,bootstrapper_att, layer_id);
-    // gettimeofday(&tend1,NULL);
-    // double softmax_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-    // cout <<"Compute softmax time = "<<softmax_time<<". ";
+    gettimeofday(&tstart1,NULL);
+    vector<PhantomCiphertext> enc_softmax = softmax_boot(QK,bias_vec,input_num,context,
+        relin_keys,iter,sk,bootstrapper_att, layer_id);
+    gettimeofday(&tend1,NULL);
+    double softmax_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"Compute softmax time = "<<softmax_time<<". ";
 
-    //cout <<"    Modulus chain index for the result: "<< seal_context.get_context_data(enc_softmax[0].parms_id())->chain_index()<<endl;
+    // cout <<"    Modulus chain index for the result: "<< seal_context.get_context_data(enc_softmax[0].parms_id())->chain_index()<<endl;
 
 /*
     //for test

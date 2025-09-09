@@ -232,10 +232,10 @@ void softmax_boot_test(){
   long scale_factor = 2;
   long inverse_deg = 1;
 
-  long logN = 15;
+  long logN = 16;
   long loge = 10;
 
-  long logn = 13;
+  long logn = 15;
   long sparse_slots = (1 << logn);
 
   int logp = 46;
@@ -366,7 +366,7 @@ void softmax_boot_test(){
     struct timeval tstart1, tend1;
 
     //construct input
-    int num_X = 128;
+    int num_X = 256;
     int num_row = 128;
     int num_col = 128;
     cout <<"Number of matrices in one batch = "<<num_X<<endl;

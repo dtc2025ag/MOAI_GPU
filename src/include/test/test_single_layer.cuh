@@ -4,7 +4,7 @@ using namespace std;
 using namespace phantom;
 using namespace moai;
 
-const int num_X = 128;
+const int num_X = 256;
 const int num_row = 128;
 const int num_col = 768;
 const int num_inter = 3072;
@@ -401,10 +401,10 @@ void single_layer_test()
     long scale_factor = 2;
     long inverse_deg = 1;
 
-    long logN = 15;
+    long logN = 16;
     long loge = 10;
 
-    long logn = 14;
+    long logn = 15;
     long sparse_slots = (1 << logn);
 
     int logp = 46;
@@ -464,7 +464,7 @@ void single_layer_test()
     PhantomPublicKey public_key = secret_key.gen_publickey(context);
     PhantomRelinKey relin_keys = secret_key.gen_relinkey(context);
     // PhantomGaloisKey gal_keys = secret_key.create_galois_keys(context);
-    PhantomGaloisKey gal_keys;
+    PhantomGaloisKey gal_keys_boot;
 
     // end
 
@@ -503,16 +503,16 @@ void single_layer_test()
     //    relin_keys,
     //    gal_keys_boot);
 
-    CKKSEvaluator ckks_evaluator(&context, &public_key, &secret_key, &phantom_encoder, &relin_keys, &gal_keys, scale);
+    CKKSEvaluator ckks_evaluator(&context, &public_key, &secret_key, &phantom_encoder, &relin_keys, &gal_keys_boot, scale);
 
     // add on Aug 18, save GPU memory
-    vector<int> gal_vector;
-    gal_vector.push_back(0);
-    for (int i = 0; i < 32; ++i)
-    {
-        gal_vector.push_back((i * num_X));
-        // cout << (i * num_X) << " ";
-    }
+    // vector<int> gal_vector;
+    // gal_vector.push_back(0);
+    // for (int i = 0; i < sparse_slots/num_X; ++i)
+    // {
+    //     gal_vector.push_back((i * num_X));
+    //     // cout << (i * num_X) << " ";
+    // }
 
     // gal_vector.push_back(0); // NEXUS
     // for (int i = 0; i < logN - 1; i++)
@@ -521,7 +521,7 @@ void single_layer_test()
     // }
 
     // // keygen.create_galois_keys(gal_vector, gal_keys);
-    ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_vector, gal_keys);
+    // ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_vector, gal_keys);
     // gal_keys = secret_key.create_galois_keys(context);
 
     Bootstrapper bootstrapper(
@@ -536,26 +536,39 @@ void single_layer_test()
         inverse_deg,
         &ckks_evaluator);
 
-    //     cout << "preparing bootstrapping..." << endl;
-    //     bootstrapper.prepare_mod_polynomial();
+    cout << "preparing bootstrapping..." << endl;
+    bootstrapper.prepare_mod_polynomial();
 
-    //     //cout << "Adding Bootstrapping Keys..." << endl;
-    //     vector<int> gal_steps_vector;
-    //     gal_steps_vector.push_back(0);
-    //     for (int i = 0; i < logN - 1; i++) {
-    //         gal_steps_vector.push_back((1 << i));
-    //     }
-    //     bootstrapper.addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
+    cout << "Adding Bootstrapping Keys..." << endl;
+    vector<int> gal_steps_vector;
+    gal_steps_vector.push_back(0);
+    for (int i = 0; i < logN - 1; i++) {
+        gal_steps_vector.push_back((1 << i));
+    }
+    bootstrapper.addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
 
-    //     // keygen.create_galois_keys(gal_steps_vector, gal_keys_boot);
+    // ct-ct rotate steps
+    // vector<int> gal_vector;
+    // gal_steps_vector.push_back(0);
+    // for (int i = 0; i < sparse_slots/num_X; ++i)
+    // {
+    //     gal_steps_vector.push_back((i * num_X));
+    //     // cout << (i * num_X) << " ";
+    // }
 
-    //     ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
-    //     std::cout << "Galois key generated from steps vector." << endl;
+    // keygen.create_galois_keys(gal_steps_vector, gal_keys_boot);
 
-    //     bootstrapper.slot_vec.push_back(logn);
+    // ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
+    gal_keys_boot = secret_key.create_galois_keys(context);
+    // gal_keys = secret_key.create_galois_keys(context);
+    std::cout << "Galois key generated from steps vector." << endl;
 
-    //   //cout << "Generating Linear Transformation Coefficients..." << endl;
-    //   bootstrapper.generate_LT_coefficient_3();
+    bootstrapper.slot_vec.push_back(logn);
+
+    cout << "Generating Linear Transformation Coefficients..." << endl;
+    bootstrapper.generate_LT_coefficient_3();
+
+    
 
     struct timeval tstart1, tend1;
 
@@ -569,18 +582,18 @@ void single_layer_test()
 
     vector<vector<vector<double>>>().swap(input_x);
 
-    // vector<PhantomCiphertext> enc_ecd_x_copy(num_col);
-    // for (int i = 0; i < num_col; ++i){
-    //     enc_ecd_x_copy[i] = enc_ecd_x[i];
-    // }
+    vector<PhantomCiphertext> enc_ecd_x_copy(num_col);
+    for (int i = 0; i < num_col; ++i){
+        enc_ecd_x_copy[i] = enc_ecd_x[i];
+    }
 
-    // // #pragma omp parallel for
+    // #pragma omp parallel for
 
-    // for (int i = 0; i < num_col; ++i) {
-    //     for (int j = 0; j < boot_level; ++j){
-    //         evaluator.mod_switch_to_next_inplace(enc_ecd_x_copy[i]);
-    //     }
-    // }
+    for (int i = 0; i < num_col; ++i) {
+        for (int j = 0; j < boot_level; ++j){
+            evaluator.mod_switch_to_next_inplace(enc_ecd_x_copy[i]);
+        }
+    }
 
     // mod switch to remaining level
     // #pragma omp parallel for
@@ -607,10 +620,10 @@ void single_layer_test()
 
     gettimeofday(&tstart1, NULL);
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < num_head; ++i)
     {
         att_block[i] = single_att_block(enc_ecd_x, WQ[i], WK[i], WV[i], bQ[i], bK[i], bV[i],
-                                        b_vec, num_input, context, relin_keys, gal_keys, bootstrapper, num_X, secret_key, 16, 10);
+                                        b_vec, num_input, context, relin_keys, gal_keys_boot, bootstrapper, num_X, secret_key, 16, 10);
         /*
         cout <<"Decrypt + decode result of ";
         cout <<i+1<<"-th head: "<<endl;
@@ -634,8 +647,7 @@ void single_layer_test()
     double att_block_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
     cout << "Attention block time = " << att_block_time << endl;
     // cout <<"Modulus chain index for the result: "<< context.get_context_data(att_block[2][0].params_id()).chain_depth()<<endl;
-}
-
+// }
 /*
     cout <<"Decrypt + decode result: "<<endl;
     //decrypt and decode
@@ -661,524 +673,553 @@ void single_layer_test()
 
 */
 // delete enc_ecd_x
-//     vector<PhantomCiphertext>().swap(enc_ecd_x);
-
-//     gettimeofday(&tstart1,NULL);
-
-//     int output_size = att_block[0].size();
-
-//     vector<PhantomCiphertext> att_output(num_head*output_size);
-
-//     for (int i = 0; i < num_head; ++i){
-//         for (int j = 0 ; j < output_size ; ++j){
-//             att_output[i*output_size+j] = att_block[i][j];
-//         }
-//     }
-
-//     cout <<"Concatenation. size of output of attention block = "<<num_head<<" * "<<output_size<<" = "<<att_output.size()<<endl;
-
-//     vector<vector<PhantomCiphertext>>().swap(att_block);
-
-//     //att_output * selfoutput + selfoutput_bias
-//     vector<PhantomCiphertext> att_selfoutput = ct_pt_matrix_mul_wo_pre_large(att_output, selfoutput, num_col, num_col, num_col, context);
-//     int att_selfoutput_size = att_selfoutput.size();
-//     //cout <<"num of ct in att_selfoutput = "<<att_selfoutput_size<<endl;
-//     for (int i = 0; i < num_col; ++i){
-//         PhantomPlaintext ecd_self_bias;
-//         vector<double> self_bias_vec(slot_count,0);
-//         for (int j = 0; j < slot_count; ++j){
-//             if(b_vec[j] == 1){
-//                 self_bias_vec[j] = selfoutput_bias[i];
-//             }
-//         }
-//         encoder.encode(self_bias_vec, att_selfoutput[i].params_id(), att_selfoutput[i].scale(), ecd_self_bias);
-//         evaluator.mod_switch_to_inplace(ecd_self_bias, att_selfoutput[i].params_id());
-//         att_selfoutput[i].scale() = scale;
-//         ecd_self_bias.scale() = scale;
-//         evaluator.add_plain_inplace(att_selfoutput[i],ecd_self_bias);
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double selfoutput_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"selfoutput time = "<<selfoutput_time<<endl;
-//     cout <<"Modulus chain index for the result: "<< context.get_context_data(att_selfoutput[0].params_id()).chain_depth()<<endl;
-
-// /*
-//     cout <<"Decrypt + decode result of selfoutput: "<<endl;
-//     //decrypt and decode
-//     for (int k = 0; k < att_selfoutput.size(); ++k){
-//         cout <<k+1<<"-th ciphertext: ";
-//         Plaintext plain_result;
-//         decryptor.decrypt(att_selfoutput[k], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-// */
-//     //mod switch the ciphertext to the lowest layer
-//     for (int i = 0; i < att_selfoutput_size; ++i){
-//         while(context.get_context_data(att_selfoutput[i].params_id()).chain_depth() != 0){
-//         evaluator.mod_switch_to_next_inplace(att_selfoutput[i]);
-//         }
-//     }
-
-//     vector<PhantomCiphertext> rtn(att_selfoutput_size);
-
-//     //cout<<"bootstrapping start. "<<endl;
-
-//     gettimeofday(&tstart1,NULL);
-
-//     #pragma omp parallel for
-
-//     for(int i = 0 ; i < 128 ; ++i){
-//         for(int j = 0 ; j < 6 ; ++j){
-//             bootstrapper.bootstrap_3(rtn[i*6+j],att_selfoutput[i*6+j]);
-//         }
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double boot_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"bootstrapping time = "<<boot_time<<endl;
-//     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].params_id()).chain_depth()<<endl;
-
-//     //for (int i = 0; i < rtn.size(); ++i){
-//     //    evaluator.mod_switch_to_next_inplace(rtn[i]);
-//     //}
-//     //cout <<"Modulus chain index before layernorm: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
-
-//     vector<PhantomCiphertext>().swap(att_selfoutput);
-
-//     /*
-//     //decrypt and decode
-//     cout <<"Decrypt + decode result of bootstrapping: "<<endl;
-//     for (int i = 0; i < rtn.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(rtn[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-//     */
-//     //LayerNorm
-//     //cout <<"LayerNorm start. "<<endl;
-//     gettimeofday(&tstart1,NULL);
-
-//     //rtn+enc_ecd_x_copy
-//     #pragma omp parallel for
-
-//     for (int i = 0; i < num_col; ++i){
-//         evaluator.mod_switch_to_inplace(enc_ecd_x_copy[i], rtn[i].params_id());
-//         evaluator.add_inplace(rtn[i],enc_ecd_x_copy[i]);
-//     }
-
-//     vector<PhantomCiphertext> layernorm_selfoutput = layernorm(rtn,layernorm1_gamma,layernorm1_beta, b_vec,
-//         context,relin_keys,secret_key);
-
-//     gettimeofday(&tend1,NULL);
-//     double layernorm_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"layernorm time = "<<layernorm_time<<endl;
-//     cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_selfoutput[0].params_id()).chain_depth()<<endl;
-//     vector<PhantomCiphertext>().swap(enc_ecd_x_copy);
-// /*
-//     cout <<"Decrypt + decode result of layernorm: "<<endl;
-//     for (int i = 0; i < layernorm_selfoutput.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(layernorm_selfoutput[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//             else if(result[ind] >= 0.0001){
-//                 cout <<"( "<<ind<<", "<<result[ind]<<"). ";
-//                 continue;
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     //bootstrapping
-//     int layernorm_selfoutput_size = layernorm_selfoutput.size();
-//     //mod switch the ciphertext to the lowest layer
-//     for (int i = 0; i < layernorm_selfoutput_size; ++i){
-//         while(context.get_context_data(layernorm_selfoutput[i].params_id()).chain_depth() != 0){
-//         evaluator.mod_switch_to_next_inplace(layernorm_selfoutput[i]);
-//         }
-//     }
-
-//     vector<PhantomCiphertext> boot_layer(layernorm_selfoutput_size);
-
-//     //cout<<"bootstrapping start. "<<endl;
-
-//     gettimeofday(&tstart1,NULL);
-
-//     #pragma omp parallel for
-
-//     for(int i = 0 ; i < 128 ; ++i){
-//         for(int j = 0 ; j < 6 ; ++j){
-//             bootstrapper.bootstrap_3(rtn[i*6+j],layernorm_selfoutput[i*6+j]);
-//             boot_layer[i*6+j] = rtn[i*6+j];
-//         }
-//     }
-
-//     #pragma omp parallel for
-
-//     for (int i = 0; i < rtn.size(); ++i) {
-//         for (int j = 0; j < 11; ++j){
-//             evaluator.mod_switch_to_next_inplace(rtn[i]);
-//         }
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double boot_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"bootstrapping time = "<<boot_time2<<endl;
-//     //cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
-//     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(boot_layer[0].params_id()).chain_depth()<<endl;
-
-//     vector<PhantomCiphertext>().swap(layernorm_selfoutput);
-
-// /*
-//     //decrypt and decode
-//     cout <<"Decrypt + decode result of bootstrapping: "<<endl;
-//     for (int i = 0; i < 10; ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(rtn[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     //rtn * inter_weight + inter_bias
-
-//     cout <<"Modulus chain index before intermediate linear: "<< context.get_context_data(rtn[0].params_id()).chain_depth()<<endl;
-//     gettimeofday(&tstart1,NULL);
-
-//     vector<PhantomCiphertext> inter_output = ct_pt_matrix_mul_wo_pre_large(rtn, inter_weight, num_col, num_inter, num_col, context);
-//     int inter_output_size = inter_output.size();
-//     //cout <<"num of ct in inter_output = "<<inter_output_size<<endl;
-//     /*
-//     cout <<"scale of inter_output = "<<log2(inter_output[0].scale())<<endl;
-//     cout <<"Decrypt + decode result of intermediate_linear wo bias: "<<endl;
-//     for (int i = 0; i < inter_output.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(inter_output[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//             else if(result[ind] >= 0.001){
-//                 cout <<"( "<<ind<<", "<<result[ind]<<"). ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     for (int i = 0; i < num_inter; ++i){
-//         PhantomPlaintext ecd_inter_bias;
-//         vector<double> inter_bias_vec(slot_count,0);
-//         for (int j = 0; j < slot_count; ++j){
-//             if(b_vec[j] == 1){
-//                 inter_bias_vec[j] = inter_bias[i];
-//             }
-//         }
-//         encoder.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias);
-//         evaluator.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
-//         inter_output[i].scale() = scale;
-//         ecd_inter_bias.scale() = scale;
-//         evaluator.add_plain_inplace(inter_output[i],ecd_inter_bias);
-
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double inter_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"Inter layer time = "<<inter_time<<endl;
-//     cout <<"Modulus chain index after inter layer: "<< context.get_context_data(inter_output[0].params_id()).chain_depth()<<endl;
-
-// /*
-//     cout <<"Decrypt + decode result of intermediate_linear: "<<endl;
-//     for (int i = 0; i < inter_output.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(inter_output[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         int iscout = 0;
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//             else if(result[ind] >= 0.001){
-//                 if(iscout == 0){
-//                     cout <<"( "<<ind<<", "<<result[ind]<<"). ";
-//                     iscout ++;
-//                 }
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     vector<PhantomCiphertext> gelu_output(num_inter);
-
-//     gettimeofday(&tstart1,NULL);
-
-//     #pragma omp parallel for
-
-//     for (int i = 0; i < 96; ++i){
-//         for (int j = 0 ; j < 32; ++j){
-//             gelu_output[i*32+j] = gelu_v2(inter_output[i*32+j],context,relin_keys,secret_key);
-//         }
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double gelu_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"gelu time = "<<gelu_time<<endl;
-
-//     cout <<"Modulus chain index for gelu: "<< context.get_context_data(gelu_output[0].params_id()).chain_depth()<<endl;
-
-//     vector<PhantomCiphertext>().swap(inter_output);
-// /*
-//     cout <<"Decrypt + decode result of intermediate_gelu: "<<endl;
-//     for (int i = 0; i < gelu_output.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(gelu_output[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         int iscout = 0;
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-
-//         //    else if(result[ind] >= 0.001){
-//         //        if(iscout == 0){
-//         //            cout <<"( "<<ind<<", "<<result[ind]<<"). ";
-//         //            iscout ++;
-//         //        }
-//         //    }
-
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     //gelu * final_weight + final_bias
-//     gettimeofday(&tstart1,NULL);
-
-//     vector<PhantomCiphertext> final_output = ct_pt_matrix_mul_wo_pre_w_mask(gelu_output, final_weight,b_vec, num_inter, num_col, num_inter, context);
-//     int final_output_size = final_output.size();
-//     //cout <<"num of ct in final_output = "<<final_output_size<<endl;
-//     for (int i = 0; i < num_col; ++i){
-//         PhantomPlaintext ecd_final_bias;
-//         vector<double> final_bias_vec(slot_count,0);
-//         for (int j = 0; j < slot_count; ++j){
-//             if(b_vec[j] == 1){
-//                 final_bias_vec[j] = final_bias[i];
-//             }
-//         }
-//         encoder.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias);
-//         evaluator.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
-//         final_output[i].scale() = scale;
-//         ecd_final_bias.scale() = scale;
-//         evaluator.add_plain_inplace(final_output[i],ecd_final_bias);
-
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double final_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"Final layer time = "<<final_time<<endl;
-//     cout <<"Modulus chain index after final layer: "<< context.get_context_data(final_output[0].params_id()).chain_depth()<<endl;
-// /*
-//     cout <<"Decrypt + decode result of intermediate_final: "<<endl;
-//     for (int i = 0; i < final_output.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(final_output[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         int iscout = 0;
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//             else if(result[ind] >= 0.001){
-//                 if(iscout == 0){
-//                     cout <<"( "<<ind<<", "<<result[ind]<<"). ";
-//                     iscout ++;
-//                 }
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     //bootstrapping
-//     //int final_output_size = final_output.size();
-//     //mod switch the ciphertext to the lowest layer
-//     for (int i = 0; i < final_output_size; ++i){
-//         while(context.get_context_data(final_output[i].params_id()).chain_depth() != 0){
-//         evaluator.mod_switch_to_next_inplace(final_output[i]);
-//         }
-//     }
-
-//     //cout<<"bootstrapping start. "<<endl;
-//     vector<PhantomCiphertext> rtn2(768);
-//     gettimeofday(&tstart1,NULL);
-
-//     #pragma omp parallel for
-
-//     for(int i = 0 ; i < 128 ; ++i){
-//         for(int j = 0 ; j < 6 ; ++j){
-//             bootstrapper.bootstrap_3(rtn2[i*6+j],final_output[i*6+j]);
-//         }
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double boot_time3 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"bootstrapping time = "<<boot_time3<<endl;
-//     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
-
-//    // for (int i = 0; i < rtn2.size(); ++i){
-//     //    evaluator.mod_switch_to_next_inplace(rtn2[i]);
-//    // }
-//     //cout <<"Modulus chain index before layernorm: "<< context.get_context_data(rtn2[0].parms_id())->chain_index()<<endl;
-
-//     vector<PhantomCiphertext>().swap(final_output);
-
-//     cout <<"LayerNorm start. "<<endl;
-//     gettimeofday(&tstart1,NULL);
-
-//     //rtn+enc_ecd_x_copy
-//     #pragma omp parallel for
-
-//     for (int i = 0; i < num_col; ++i){
-//         evaluator.mod_switch_to_inplace(boot_layer[i], rtn2[i].params_id());
-//         evaluator.add_inplace(rtn2[i],boot_layer[i]);
-//     }
-// /*
-//     cout <<"Decrypt + decode result before layernorm: "<<endl;
-//     for (int i = 0; i < 5; ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(rtn2[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     vector<PhantomCiphertext> layernorm_finaloutput = layernorm2(rtn2,layernorm2_gamma,layernorm2_beta,b_vec,
-//         context,relin_keys,secret_key);
-
-//     gettimeofday(&tend1,NULL);
-//     double layernorm_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"layernorm time = "<<layernorm_time2<<endl;
-//     cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_finaloutput[0].params_id()).chain_depth()<<endl;
-//     vector<PhantomCiphertext>().swap(rtn);
-
-//     cout <<"Decrypt + decode result of one layer: "<<endl;
-//     for (int i = 0; i < layernorm_finaloutput.size(); ++i){
-//         PhantomPlaintext plain_result;
-//         decryptor.decrypt(layernorm_finaloutput[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-
-//     //bootstrapping
-//     int layernorm2_size = layernorm_finaloutput.size();
-//     //mod switch the ciphertext to the lowest layer
-//     for (int i = 0; i < layernorm2_size; ++i){
-//         while(context.get_context_data(layernorm_finaloutput[i].params_id()).chain_depth() != 0){
-//         evaluator.mod_switch_to_next_inplace(layernorm_finaloutput[i]);
-//         }
-//     }
-
-//     //cout<<"bootstrapping start. "<<endl;
-//     gettimeofday(&tstart1,NULL);
-
-//     #pragma omp parallel for
-
-//     for(int i = 0 ; i < 128 ; ++i){
-//         for(int j = 0 ; j < 6 ; ++j){
-//             bootstrapper.bootstrap_3(rtn2[i*6+j],layernorm_finaloutput[i*6+j]);
-//         }
-//     }
-
-//     gettimeofday(&tend1,NULL);
-//     double boot_time4 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-//     cout <<"bootstrapping time = "<<boot_time4<<endl;
-//     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
-
-//     vector<PhantomCiphertext>().swap(layernorm_finaloutput);
-// /*
-//     cout <<"Decrypt + decode result of one layer: "<<endl;
-//     for (int i = 0; i < rtn2.size(); ++i){
-//         Plaintext plain_result;
-//         decryptor.decrypt(rtn2[i], plain_result);
-//         vector<double> result;
-//         encoder.decode(plain_result, result);
-//         cout <<i+1<<"-th ciphertext: ";
-//         for (int ind = 0 ; ind < slot_count ; ++ind){
-//             if(b_vec[ind] == 1){
-//                 cout <<result[ind]<<", ";
-//             }
-//         }
-//         cout <<endl;
-//     }
-
-//     cout <<endl;
-// */
-//     double total_time = att_block_time+selfoutput_time+layernorm_time+inter_time+gelu_time+final_time+layernorm_time2
-//     +boot_time+boot_time2+boot_time3+boot_time4;
-//     cout <<"Total time for one layer: "<<total_time<<", amortized time: "<<total_time/256.0<<endl;
-
-// }
+    vector<PhantomCiphertext>().swap(enc_ecd_x);
+
+    gettimeofday(&tstart1,NULL);
+
+    int output_size = att_block[0].size();
+
+    vector<PhantomCiphertext> att_output(num_head*output_size);
+
+    for (int i = 0; i < num_head; ++i){
+        for (int j = 0 ; j < output_size ; ++j){
+            // att_output[i*output_size+j] = att_block[i][j];
+            att_output[i*output_size+j] = att_block[i][j];
+        }
+    }
+
+    cout <<"Concatenation. size of output of attention block = "<<num_head<<" * "<<output_size<<" = "<<att_output.size()<<endl;
+
+    vector<vector<PhantomCiphertext>>().swap(att_block);
+
+    //att_output * selfoutput + selfoutput_bias
+    vector<PhantomCiphertext> att_selfoutput = ct_pt_matrix_mul_wo_pre_large(att_output, selfoutput, num_col, num_col, num_col, context);
+    int att_selfoutput_size = att_selfoutput.size();
+    //cout <<"num of ct in att_selfoutput = "<<att_selfoutput_size<<endl;
+    for (int i = 0; i < num_col; ++i){
+        PhantomPlaintext ecd_self_bias;
+        vector<double> self_bias_vec(slot_count,0);
+        for (int j = 0; j < slot_count; ++j){
+            if(b_vec[j] == 1){
+                self_bias_vec[j] = selfoutput_bias[i];
+            }
+        }
+        encoder.encode(self_bias_vec, att_selfoutput[i].params_id(), att_selfoutput[i].scale(), ecd_self_bias);
+        evaluator.mod_switch_to_inplace(ecd_self_bias, att_selfoutput[i].params_id());
+        att_selfoutput[i].scale() = scale;
+        ecd_self_bias.scale() = scale;
+        evaluator.add_plain_inplace(att_selfoutput[i],ecd_self_bias);
+    }
+
+    gettimeofday(&tend1,NULL);
+    double selfoutput_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"selfoutput time = "<<selfoutput_time<<endl;
+    cout <<"Modulus chain index for the result: "<< context.get_context_data(att_selfoutput[0].params_id()).chain_depth()<<endl;
+
+/*
+    cout <<"Decrypt + decode result of selfoutput: "<<endl;
+    //decrypt and decode
+    for (int k = 0; k < att_selfoutput.size(); ++k){
+        cout <<k+1<<"-th ciphertext: ";
+        Plaintext plain_result;
+        decryptor.decrypt(att_selfoutput[k], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+*/
+    //mod switch the ciphertext to the lowest layer
+    for (int i = 0; i < att_selfoutput_size; ++i){
+        while(context.get_context_data(att_selfoutput[i].params_id()).chain_depth() != 0){
+        evaluator.mod_switch_to_next_inplace(att_selfoutput[i]);
+        }
+    }
+
+    vector<PhantomCiphertext> rtn(att_selfoutput_size);
+
+    //cout<<"bootstrapping start. "<<endl;
+
+    gettimeofday(&tstart1,NULL);
+
+    // #pragma omp parallel for
+
+    for(int i = 0 ; i < 128 ; ++i){
+        for(int j = 0 ; j < 6 ; ++j){
+            bootstrapper.bootstrap_3(rtn[i*6+j],att_selfoutput[i*6+j]);
+        }
+    }
+
+    gettimeofday(&tend1,NULL);
+    double boot_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"bootstrapping time = "<<boot_time<<endl;
+    cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].params_id()).chain_depth()<<endl;
+
+    //for (int i = 0; i < rtn.size(); ++i){
+    //    evaluator.mod_switch_to_next_inplace(rtn[i]);
+    //}
+    //cout <<"Modulus chain index before layernorm: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
+
+    vector<PhantomCiphertext>().swap(att_selfoutput);
+
+    /*
+    //decrypt and decode
+    cout <<"Decrypt + decode result of bootstrapping: "<<endl;
+    for (int i = 0; i < rtn.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(rtn[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+    */
+    //LayerNorm
+    //cout <<"LayerNorm start. "<<endl;
+    gettimeofday(&tstart1,NULL);
+
+    //rtn+enc_ecd_x_copy
+    // #pragma omp parallel for
+
+    for (int i = 0; i < num_col; ++i){
+        evaluator.mod_switch_to_inplace(enc_ecd_x_copy[i], rtn[i].params_id());
+        evaluator.add_inplace(rtn[i],enc_ecd_x_copy[i]);
+    }
+
+    vector<PhantomCiphertext> layernorm_selfoutput = layernorm(rtn,layernorm1_gamma,layernorm1_beta, b_vec,
+        context,relin_keys,secret_key);
+
+    gettimeofday(&tend1,NULL);
+    double layernorm_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"layernorm time = "<<layernorm_time<<endl;
+    cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_selfoutput[0].params_id()).chain_depth()<<endl;
+    vector<PhantomCiphertext>().swap(enc_ecd_x_copy);
+/*
+    cout <<"Decrypt + decode result of layernorm: "<<endl;
+    for (int i = 0; i < layernorm_selfoutput.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(layernorm_selfoutput[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+            else if(result[ind] >= 0.0001){
+                cout <<"( "<<ind<<", "<<result[ind]<<"). ";
+                continue;
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    //bootstrapping
+    int layernorm_selfoutput_size = layernorm_selfoutput.size();
+    //mod switch the ciphertext to the lowest layer
+    for (int i = 0; i < layernorm_selfoutput_size; ++i){
+        while(context.get_context_data(layernorm_selfoutput[i].params_id()).chain_depth() != 0){
+        evaluator.mod_switch_to_next_inplace(layernorm_selfoutput[i]);
+        }
+    }
+
+    vector<PhantomCiphertext> boot_layer(layernorm_selfoutput_size);
+
+    //cout<<"bootstrapping start. "<<endl;
+
+    gettimeofday(&tstart1,NULL);
+
+    // #pragma omp parallel for
+    rtn = vector<PhantomCiphertext>(layernorm_selfoutput_size);
+    // vector<PhantomCiphertext>().swap(rtn);
+    for(int i = 0 ; i < 128 ; ++i){
+        for(int j = 0 ; j < 6 ; ++j){
+            bootstrapper.bootstrap_3(rtn[i*6+j],layernorm_selfoutput[i*6+j]);
+            boot_layer[i*6+j] = rtn[i*6+j];
+        }
+    }
+
+    // #pragma omp parallel for
+
+    for (int i = 0; i < rtn.size(); ++i) {
+        for (int j = 0; j < 11; ++j){
+            evaluator.mod_switch_to_next_inplace(rtn[i]);
+        }
+    }
+
+    gettimeofday(&tend1,NULL);
+    double boot_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"bootstrapping time = "<<boot_time2<<endl;
+    //cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
+    cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(boot_layer[0].params_id()).chain_depth()<<endl;
+
+    vector<PhantomCiphertext>().swap(layernorm_selfoutput);
+
+/*
+    //decrypt and decode
+    cout <<"Decrypt + decode result of bootstrapping: "<<endl;
+    for (int i = 0; i < 10; ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(rtn[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    //rtn * inter_weight + inter_bias
+
+    cout <<"Modulus chain index before intermediate linear: "<< context.get_context_data(rtn[0].params_id()).chain_depth()<<endl;
+    gettimeofday(&tstart1,NULL);
+
+    vector<PhantomCiphertext> inter_output = ct_pt_matrix_mul_wo_pre_large(rtn, inter_weight, num_col, num_inter, num_col, context);
+    int inter_output_size = inter_output.size();
+    //cout <<"num of ct in inter_output = "<<inter_output_size<<endl;
+    /*
+    cout <<"scale of inter_output = "<<log2(inter_output[0].scale())<<endl;
+    cout <<"Decrypt + decode result of intermediate_linear wo bias: "<<endl;
+    for (int i = 0; i < inter_output.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(inter_output[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+            else if(result[ind] >= 0.001){
+                cout <<"( "<<ind<<", "<<result[ind]<<"). ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    for (int i = 0; i < num_inter; ++i){
+        PhantomPlaintext ecd_inter_bias;
+        vector<double> inter_bias_vec(slot_count,0);
+        for (int j = 0; j < slot_count; ++j){
+            if(b_vec[j] == 1){
+                inter_bias_vec[j] = inter_bias[i];
+            }
+        }
+        encoder.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias);
+        evaluator.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
+        inter_output[i].scale() = scale;
+        ecd_inter_bias.scale() = scale;
+        evaluator.add_plain_inplace(inter_output[i],ecd_inter_bias);
+
+    }
+
+    gettimeofday(&tend1,NULL);
+    double inter_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"Inter layer time = "<<inter_time<<endl;
+    cout <<"Modulus chain index after inter layer: "<< context.get_context_data(inter_output[0].params_id()).chain_depth()<<endl;
+
+/*
+    cout <<"Decrypt + decode result of intermediate_linear: "<<endl;
+    for (int i = 0; i < inter_output.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(inter_output[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        int iscout = 0;
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+            else if(result[ind] >= 0.001){
+                if(iscout == 0){
+                    cout <<"( "<<ind<<", "<<result[ind]<<"). ";
+                    iscout ++;
+                }
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+
+    //2025.09.08, change to omp
+    const int max_threads = omp_get_max_threads();
+    const int nthreads = std::max(1, std::min(max_threads, 4));
+
+    // —— 准备每线程一个流（拥有型 wrapper） —— //
+    if (stream_pool.size() < static_cast<size_t>(nthreads))
+    {
+        stream_pool.reserve(nthreads);
+        for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+        {
+            stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+        }
+    }
+    if (nthreads == 1)
+    {
+        stream_pool[0] = *phantom::util::global_variables::default_stream;
+    }
+
+    vector<PhantomCiphertext> gelu_output(num_inter);
+
+    gettimeofday(&tstart1,NULL);
+
+    // #pragma omp parallel for
+#pragma omp parallel num_threads(nthreads)
+    {
+        const int tid = omp_get_thread_num();
+        auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+#pragma omp for schedule(static)
+        for (int i = 0; i < 96; ++i)
+        {
+            for (int j = 0 ; j < 32; ++j)
+            {
+                gelu_output[i*32+j] = gelu_v2(inter_output[i*32+j],context,relin_keys,secret_key, stream);
+            }
+        }
+        cudaStreamSynchronize(stream.get_stream());
+    }
+
+    gettimeofday(&tend1,NULL);
+    double gelu_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"gelu time = "<<gelu_time<<endl;
+
+    cout <<"Modulus chain index for gelu: "<< context.get_context_data(gelu_output[0].params_id()).chain_depth()<<endl;
+
+    vector<PhantomCiphertext>().swap(inter_output);
+/*
+    cout <<"Decrypt + decode result of intermediate_gelu: "<<endl;
+    for (int i = 0; i < gelu_output.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(gelu_output[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        int iscout = 0;
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+
+        //    else if(result[ind] >= 0.001){
+        //        if(iscout == 0){
+        //            cout <<"( "<<ind<<", "<<result[ind]<<"). ";
+        //            iscout ++;
+        //        }
+        //    }
+
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    //gelu * final_weight + final_bias
+    gettimeofday(&tstart1,NULL);
+
+    vector<PhantomCiphertext> final_output = ct_pt_matrix_mul_wo_pre_w_mask(gelu_output, final_weight,b_vec, num_inter, num_col, num_inter, context);
+    int final_output_size = final_output.size();
+    //cout <<"num of ct in final_output = "<<final_output_size<<endl;
+    for (int i = 0; i < num_col; ++i){
+        PhantomPlaintext ecd_final_bias;
+        vector<double> final_bias_vec(slot_count,0);
+        for (int j = 0; j < slot_count; ++j){
+            if(b_vec[j] == 1){
+                final_bias_vec[j] = final_bias[i];
+            }
+        }
+        encoder.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias);
+        evaluator.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
+        final_output[i].scale() = scale;
+        ecd_final_bias.scale() = scale;
+        evaluator.add_plain_inplace(final_output[i],ecd_final_bias);
+
+    }
+
+    gettimeofday(&tend1,NULL);
+    double final_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"Final layer time = "<<final_time<<endl;
+    cout <<"Modulus chain index after final layer: "<< context.get_context_data(final_output[0].params_id()).chain_depth()<<endl;
+/*
+    cout <<"Decrypt + decode result of intermediate_final: "<<endl;
+    for (int i = 0; i < final_output.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(final_output[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        int iscout = 0;
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+            else if(result[ind] >= 0.001){
+                if(iscout == 0){
+                    cout <<"( "<<ind<<", "<<result[ind]<<"). ";
+                    iscout ++;
+                }
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    //bootstrapping
+    //int final_output_size = final_output.size();
+    //mod switch the ciphertext to the lowest layer
+    for (int i = 0; i < final_output_size; ++i){
+        while(context.get_context_data(final_output[i].params_id()).chain_depth() != 0){
+        evaluator.mod_switch_to_next_inplace(final_output[i]);
+        }
+    }
+
+    //cout<<"bootstrapping start. "<<endl;
+    vector<PhantomCiphertext> rtn2(768);
+    gettimeofday(&tstart1,NULL);
+
+    // #pragma omp parallel for
+
+    for(int i = 0 ; i < 128 ; ++i){
+        for(int j = 0 ; j < 6 ; ++j){
+            bootstrapper.bootstrap_3(rtn2[i*6+j],final_output[i*6+j]);
+        }
+    }
+
+    gettimeofday(&tend1,NULL);
+    double boot_time3 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"bootstrapping time = "<<boot_time3<<endl;
+    cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
+
+   // for (int i = 0; i < rtn2.size(); ++i){
+    //    evaluator.mod_switch_to_next_inplace(rtn2[i]);
+   // }
+    //cout <<"Modulus chain index before layernorm: "<< context.get_context_data(rtn2[0].parms_id())->chain_index()<<endl;
+
+    vector<PhantomCiphertext>().swap(final_output);
+
+    cout <<"LayerNorm start. "<<endl;
+    gettimeofday(&tstart1,NULL);
+
+    //rtn+enc_ecd_x_copy
+    // #pragma omp parallel for
+
+    for (int i = 0; i < num_col; ++i){
+        evaluator.mod_switch_to_inplace(boot_layer[i], rtn2[i].params_id());
+        evaluator.add_inplace(rtn2[i],boot_layer[i]);
+    }
+/*
+    cout <<"Decrypt + decode result before layernorm: "<<endl;
+    for (int i = 0; i < 5; ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(rtn2[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    vector<PhantomCiphertext> layernorm_finaloutput = layernorm2(rtn2,layernorm2_gamma,layernorm2_beta,b_vec,
+        context,relin_keys,secret_key);
+
+    gettimeofday(&tend1,NULL);
+    double layernorm_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"layernorm time = "<<layernorm_time2<<endl;
+    cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_finaloutput[0].params_id()).chain_depth()<<endl;
+    vector<PhantomCiphertext>().swap(rtn);
+
+    cout <<"Decrypt + decode result of one layer: "<<endl;
+    for (int i = 0; i < layernorm_finaloutput.size(); ++i){
+        PhantomPlaintext plain_result;
+        decryptor.decrypt(layernorm_finaloutput[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+
+    //bootstrapping
+    int layernorm2_size = layernorm_finaloutput.size();
+    //mod switch the ciphertext to the lowest layer
+    for (int i = 0; i < layernorm2_size; ++i){
+        while(context.get_context_data(layernorm_finaloutput[i].params_id()).chain_depth() != 0){
+        evaluator.mod_switch_to_next_inplace(layernorm_finaloutput[i]);
+        }
+    }
+
+    //cout<<"bootstrapping start. "<<endl;
+    gettimeofday(&tstart1,NULL);
+
+    // #pragma omp parallel for
+    rtn2 = vector<PhantomCiphertext>(layernorm2_size);
+    for(int i = 0 ; i < 128 ; ++i){
+        for(int j = 0 ; j < 6 ; ++j){
+            bootstrapper.bootstrap_3(rtn2[i*6+j],layernorm_finaloutput[i*6+j]);
+        }
+    }
+
+    gettimeofday(&tend1,NULL);
+    double boot_time4 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"bootstrapping time = "<<boot_time4<<endl;
+    cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
+
+    vector<PhantomCiphertext>().swap(layernorm_finaloutput);
+/*
+    cout <<"Decrypt + decode result of one layer: "<<endl;
+    for (int i = 0; i < rtn2.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(rtn2[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(b_vec[ind] == 1){
+                cout <<result[ind]<<", ";
+            }
+        }
+        cout <<endl;
+    }
+
+    cout <<endl;
+*/
+    double total_time = att_block_time+selfoutput_time+layernorm_time+inter_time+gelu_time+final_time+layernorm_time2
+    +boot_time+boot_time2+boot_time3+boot_time4;
+    cout <<"Total time for one layer: "<<total_time<<", amortized time: "<<total_time/256.0<<endl;
+
+}
