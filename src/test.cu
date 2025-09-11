@@ -29,9 +29,9 @@ int main()
     // ct_pt_matrix_mul_test();
     // cout << "unit test passed!" << endl;
 
-    // cout << "unit test: Ct-pt matrix multiplication with preprocessing" << endl;
-    // ct_pt_matrix_mul_w_preprocess_test();
-    // cout << "unit test passed!" << endl;
+    cout << "unit test: Ct-pt matrix multiplication with preprocessing" << endl;
+    ct_pt_matrix_mul_w_preprocess_test();
+    cout << "unit test passed!" << endl;
 
     // cout << "unit test: Ct-ct matrix multiplication" << endl;
     // ct_ct_matrix_mul_test();
@@ -57,9 +57,9 @@ int main()
     // softmax_boot_test();
     // cout << "unit test passed!" << endl;
 
-    cout << "single layer test" << endl;
-    single_layer_test();
-    cout << "single layer test passed!" << endl;
+    // cout << "single layer test" << endl;
+    // single_layer_test();
+    // cout << "single layer test passed!" << endl;
 
     return 0;
 }

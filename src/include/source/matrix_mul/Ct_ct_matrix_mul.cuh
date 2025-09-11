@@ -129,12 +129,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   }
 
   // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
-  std::vector<cudaEvent_t> ev_done(nthreads);
-  for (int i = 0; i < nthreads; ++i)
-  {
-    cudaEventCreateWithFlags(&ev_done[i], cudaEventDisableTiming);
-    cudaEventRecord(ev_done[i], stream_pool[i].get_stream());
-  }
+  // std::vector<cudaEvent_t> ev_done(nthreads);
+  // for (int i = 0; i < nthreads; ++i)
+  // {
+  //   cudaEventCreateWithFlags(&ev_done[i], cudaEventDisableTiming);
+  //   cudaEventRecord(ev_done[i], stream_pool[i].get_stream());
+  // }
 
   // 聚合所有 done 到计时流
   // for (int i = 0; i < nthreads; ++i)

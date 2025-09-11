@@ -620,7 +620,7 @@ void single_layer_test()
 
     gettimeofday(&tstart1, NULL);
 
-    for (int i = 0; i < num_head; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         att_block[i] = single_att_block(enc_ecd_x, WQ[i], WK[i], WV[i], bQ[i], bK[i], bV[i],
                                         b_vec, num_input, context, relin_keys, gal_keys_boot, bootstrapper, num_X, secret_key, 16, 10);
@@ -646,6 +646,7 @@ void single_layer_test()
     gettimeofday(&tend1, NULL);
     double att_block_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
     cout << "Attention block time = " << att_block_time << endl;
+    append_csv_row("../single_layer_results.csv", "Attention Block", att_block_time);
     // cout <<"Modulus chain index for the result: "<< context.get_context_data(att_block[2][0].params_id()).chain_depth()<<endl;
 // }
 /*
@@ -684,7 +685,7 @@ void single_layer_test()
     for (int i = 0; i < num_head; ++i){
         for (int j = 0 ; j < output_size ; ++j){
             // att_output[i*output_size+j] = att_block[i][j];
-            att_output[i*output_size+j] = att_block[i][j];
+            att_output[i*output_size+j] = att_block[0][j];
         }
     }
 
@@ -693,7 +694,13 @@ void single_layer_test()
     vector<vector<PhantomCiphertext>>().swap(att_block);
 
     //att_output * selfoutput + selfoutput_bias
+    gettimeofday(&tstart1,NULL);
+    cudaDeviceSynchronize();
     vector<PhantomCiphertext> att_selfoutput = ct_pt_matrix_mul_wo_pre_large(att_output, selfoutput, num_col, num_col, num_col, context);
+    cudaDeviceSynchronize();
+    gettimeofday(&tend1,NULL);
+    double selfoutput_time_temp = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    cout <<"selfoutput time(matrix_mul) = "<<selfoutput_time_temp<<endl;
     int att_selfoutput_size = att_selfoutput.size();
     //cout <<"num of ct in att_selfoutput = "<<att_selfoutput_size<<endl;
     for (int i = 0; i < num_col; ++i){
@@ -714,6 +721,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double selfoutput_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"selfoutput time = "<<selfoutput_time<<endl;
+    append_csv_row("../single_layer_results.csv", "SelfOutput", selfoutput_time);
     cout <<"Modulus chain index for the result: "<< context.get_context_data(att_selfoutput[0].params_id()).chain_depth()<<endl;
 
 /*
@@ -757,6 +765,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double boot_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"bootstrapping time = "<<boot_time<<endl;
+    append_csv_row("../single_layer_results.csv", "1st Bootstrapping", boot_time);
     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].params_id()).chain_depth()<<endl;
 
     //for (int i = 0; i < rtn.size(); ++i){
@@ -803,6 +812,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double layernorm_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"layernorm time = "<<layernorm_time<<endl;
+    append_csv_row("../single_layer_results.csv", "LayerNorm1", layernorm_time);
     cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_selfoutput[0].params_id()).chain_depth()<<endl;
     vector<PhantomCiphertext>().swap(enc_ecd_x_copy);
 /*
@@ -863,6 +873,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double boot_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"bootstrapping time = "<<boot_time2<<endl;
+    append_csv_row("../single_layer_results.csv", "2nd Bootstrapping", boot_time2);
     //cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn[0].parms_id())->chain_index()<<endl;
     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(boot_layer[0].params_id()).chain_depth()<<endl;
 
@@ -917,25 +928,76 @@ void single_layer_test()
 
     cout <<endl;
 */
-    for (int i = 0; i < num_inter; ++i){
-        PhantomPlaintext ecd_inter_bias;
-        vector<double> inter_bias_vec(slot_count,0);
-        for (int j = 0; j < slot_count; ++j){
-            if(b_vec[j] == 1){
-                inter_bias_vec[j] = inter_bias[i];
-            }
-        }
-        encoder.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias);
-        evaluator.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
-        inter_output[i].scale() = scale;
-        ecd_inter_bias.scale() = scale;
-        evaluator.add_plain_inplace(inter_output[i],ecd_inter_bias);
+    // 线程数：不超过列数（避免空转）
+    const int max_threads = omp_get_max_threads();
+    const int nthreads = std::max(1, std::min(max_threads, 32));
+    // std::cout << "nums of thread: " << nthreads << std::endl;
 
+    // —— 准备每线程一个流（拥有型 wrapper） —— //
+    if (nthreads == 1)
+    {
+        stream_pool.reserve(nthreads);
+        stream_pool[0] = *phantom::util::global_variables::default_stream;
     }
+    else if (stream_pool.size() < static_cast<size_t>(nthreads))
+    {
+        stream_pool.reserve(nthreads);
+        for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+        {
+        stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+        }
+    }
+// —— 并行计算：每线程独立 Encoder/Evaluator（各自绑定线程私有的 PhantomCKKSEncoder） —— //
+#pragma omp parallel num_threads(nthreads)
+  {
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+
+#pragma omp for schedule(static)    
+        for (int i = 0; i < num_inter; ++i){
+            PhantomPlaintext ecd_inter_bias;
+            vector<double> inter_bias_vec(slot_count,0);
+            for (int j = 0; j < slot_count; ++j){
+                if(b_vec[j] == 1){
+                    inter_bias_vec[j] = inter_bias[i];
+                }
+            }
+            encoder_local.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias, stream);
+            bridge_to_default(stream); // ★ 跨流桥接
+            evaluator_local.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
+            inter_output[i].scale() = scale;
+            ecd_inter_bias.scale() = scale;
+            evaluator_local.add_plain_inplace(inter_output[i],ecd_inter_bias);
+
+        }
+    cudaStreamSynchronize(stream.get_stream());
+    }
+
+    // for (int i = 0; i < num_inter; ++i){
+    //     PhantomPlaintext ecd_inter_bias;
+    //     vector<double> inter_bias_vec(slot_count,0);
+    //     for (int j = 0; j < slot_count; ++j){
+    //         if(b_vec[j] == 1){
+    //             inter_bias_vec[j] = inter_bias[i];
+    //         }
+    //     }
+    //     encoder.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias);
+    //     evaluator.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
+    //     inter_output[i].scale() = scale;
+    //     ecd_inter_bias.scale() = scale;
+    //     evaluator.add_plain_inplace(inter_output[i],ecd_inter_bias);
+
+    // }
 
     gettimeofday(&tend1,NULL);
     double inter_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"Inter layer time = "<<inter_time<<endl;
+    append_csv_row("../single_layer_results.csv", "Intermediate Linear", inter_time);
     cout <<"Modulus chain index after inter layer: "<< context.get_context_data(inter_output[0].params_id()).chain_depth()<<endl;
 
 /*
@@ -965,8 +1027,8 @@ void single_layer_test()
 */
 
     //2025.09.08, change to omp
-    const int max_threads = omp_get_max_threads();
-    const int nthreads = std::max(1, std::min(max_threads, 4));
+    // const int max_threads = omp_get_max_threads();
+    // const int nthreads = std::max(1, std::min(max_threads, 4));
 
     // —— 准备每线程一个流（拥有型 wrapper） —— //
     if (stream_pool.size() < static_cast<size_t>(nthreads))
@@ -988,7 +1050,10 @@ void single_layer_test()
 
     // #pragma omp parallel for
 #pragma omp parallel num_threads(nthreads)
-    {
+    {   
+        // PhantomSecretKey secret_key_local(context);
+        // PhantomRelinKey relin_keys_local = secret_key_local.gen_relinkey(context);
+
         const int tid = omp_get_thread_num();
         auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
 #pragma omp for schedule(static)
@@ -1005,7 +1070,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double gelu_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"gelu time = "<<gelu_time<<endl;
-
+    append_csv_row("../single_layer_results.csv", "GELU", gelu_time);
     cout <<"Modulus chain index for gelu: "<< context.get_context_data(gelu_output[0].params_id()).chain_depth()<<endl;
 
     vector<PhantomCiphertext>().swap(inter_output);
@@ -1042,25 +1107,55 @@ void single_layer_test()
     vector<PhantomCiphertext> final_output = ct_pt_matrix_mul_wo_pre_w_mask(gelu_output, final_weight,b_vec, num_inter, num_col, num_inter, context);
     int final_output_size = final_output.size();
     //cout <<"num of ct in final_output = "<<final_output_size<<endl;
-    for (int i = 0; i < num_col; ++i){
-        PhantomPlaintext ecd_final_bias;
-        vector<double> final_bias_vec(slot_count,0);
-        for (int j = 0; j < slot_count; ++j){
-            if(b_vec[j] == 1){
-                final_bias_vec[j] = final_bias[i];
-            }
-        }
-        encoder.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias);
-        evaluator.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
-        final_output[i].scale() = scale;
-        ecd_final_bias.scale() = scale;
-        evaluator.add_plain_inplace(final_output[i],ecd_final_bias);
 
+#pragma omp parallel num_threads(nthreads)
+    {   
+        PhantomCKKSEncoder phantom_encoder_local(context);
+        moai::Encoder encoder_local(&context, &phantom_encoder_local);
+        moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+        const int tid = omp_get_thread_num();
+        auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+#pragma omp for schedule(static)
+        for (int i = 0; i < num_col; ++i){
+            PhantomPlaintext ecd_final_bias;
+            vector<double> final_bias_vec(slot_count,0);
+            for (int j = 0; j < slot_count; ++j){
+                if(b_vec[j] == 1){
+                    final_bias_vec[j] = final_bias[i];
+                }
+            }
+            encoder_local.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias, stream);
+            bridge_to_default(stream); // ★ 跨流桥接
+            evaluator_local.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
+            final_output[i].scale() = scale;
+            ecd_final_bias.scale() = scale;
+            evaluator_local.add_plain_inplace(final_output[i],ecd_final_bias);
+
+        }
+    cudaStreamSynchronize(stream.get_stream());
     }
+
+    // for (int i = 0; i < num_col; ++i){
+    //     PhantomPlaintext ecd_final_bias;
+    //     vector<double> final_bias_vec(slot_count,0);
+    //     for (int j = 0; j < slot_count; ++j){
+    //         if(b_vec[j] == 1){
+    //             final_bias_vec[j] = final_bias[i];
+    //         }
+    //     }
+    //     encoder.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias);
+    //     evaluator.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
+    //     final_output[i].scale() = scale;
+    //     ecd_final_bias.scale() = scale;
+    //     evaluator.add_plain_inplace(final_output[i],ecd_final_bias);
+
+    // }
 
     gettimeofday(&tend1,NULL);
     double final_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"Final layer time = "<<final_time<<endl;
+    append_csv_row("../single_layer_results.csv", "Final Linear", final_time);
     cout <<"Modulus chain index after final layer: "<< context.get_context_data(final_output[0].params_id()).chain_depth()<<endl;
 /*
     cout <<"Decrypt + decode result of intermediate_final: "<<endl;
@@ -1111,6 +1206,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double boot_time3 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"bootstrapping time = "<<boot_time3<<endl;
+    append_csv_row("../single_layer_results.csv", "3rd Bootstrapping", boot_time3);
     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
 
    // for (int i = 0; i < rtn2.size(); ++i){
@@ -1154,25 +1250,26 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double layernorm_time2 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"layernorm time = "<<layernorm_time2<<endl;
+    append_csv_row("../single_layer_results.csv", "LayerNorm2", layernorm_time2);
     cout <<"Modulus chain index after layernorm: "<< context.get_context_data(layernorm_finaloutput[0].params_id()).chain_depth()<<endl;
     vector<PhantomCiphertext>().swap(rtn);
 
-    cout <<"Decrypt + decode result of one layer: "<<endl;
-    for (int i = 0; i < layernorm_finaloutput.size(); ++i){
-        PhantomPlaintext plain_result;
-        decryptor.decrypt(layernorm_finaloutput[i], plain_result);
-        vector<double> result;
-        encoder.decode(plain_result, result);
-        cout <<i+1<<"-th ciphertext: ";
-        for (int ind = 0 ; ind < slot_count ; ++ind){
-            if(b_vec[ind] == 1){
-                cout <<result[ind]<<", ";
-            }
-        }
-        cout <<endl;
-    }
+    // cout <<"Decrypt + decode result of one layer: "<<endl;
+    // for (int i = 0; i < layernorm_finaloutput.size(); ++i){
+    //     PhantomPlaintext plain_result;
+    //     decryptor.decrypt(layernorm_finaloutput[i], plain_result);
+    //     vector<double> result;
+    //     encoder.decode(plain_result, result);
+    //     cout <<i+1<<"-th ciphertext: ";
+    //     for (int ind = 0 ; ind < slot_count ; ++ind){
+    //         if(b_vec[ind] == 1){
+    //             cout <<result[ind]<<", ";
+    //         }
+    //     }
+    //     cout <<endl;
+    // }
 
-    cout <<endl;
+    // cout <<endl;
 
     //bootstrapping
     int layernorm2_size = layernorm_finaloutput.size();
@@ -1197,6 +1294,7 @@ void single_layer_test()
     gettimeofday(&tend1,NULL);
     double boot_time4 = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"bootstrapping time = "<<boot_time4<<endl;
+    append_csv_row("../single_layer_results.csv", "4th Bootstrapping", boot_time4);
     cout <<"Modulus chain index after bootstrapping: "<< context.get_context_data(rtn2[0].params_id()).chain_depth()<<endl;
 
     vector<PhantomCiphertext>().swap(layernorm_finaloutput);
@@ -1221,5 +1319,7 @@ void single_layer_test()
     double total_time = att_block_time+selfoutput_time+layernorm_time+inter_time+gelu_time+final_time+layernorm_time2
     +boot_time+boot_time2+boot_time3+boot_time4;
     cout <<"Total time for one layer: "<<total_time<<", amortized time: "<<total_time/256.0<<endl;
+    append_csv_row("../single_layer_results.csv", "Total time for one layer", total_time);
+    append_csv_row("../single_layer_results.csv", "Amortized time", total_time/256.0);
 
 }

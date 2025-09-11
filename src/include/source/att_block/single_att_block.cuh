@@ -148,38 +148,38 @@ vector<PhantomCiphertext> single_att_block(vector<PhantomCiphertext> & enc_X,
     //cout <<"    Modulus chain index for QK^T: "<< seal_context.get_context_data(QK[0].parms_id())->chain_index()<<endl;
 
 
-    //for test
-    cout <<"Decrypt + decode result: "<<endl;
-    //decrypt and decode
-    for (int i = 0; i < 5; ++i){
-        PhantomPlaintext plain_result;
-        decryptor.decrypt(QK[i], plain_result);
-        vector<double> result;
-        encoder.decode(plain_result, result);
-        cout <<i+1<<"-th ciphertext: ";
-        for (int ind = 0 ; ind < slot_count ; ++ind){
-            if(bias_vec[ind] == 1){
-                cout <<result[ind]<<" ";
-            }
-        }
-        cout <<endl;
+    // //for test
+    // cout <<"Decrypt + decode result: "<<endl;
+    // //decrypt and decode
+    // for (int i = 0; i < 5; ++i){
+    //     PhantomPlaintext plain_result;
+    //     decryptor.decrypt(QK[i], plain_result);
+    //     vector<double> result;
+    //     encoder.decode(plain_result, result);
+    //     cout <<i+1<<"-th ciphertext: ";
+    //     for (int ind = 0 ; ind < slot_count ; ++ind){
+    //         if(bias_vec[ind] == 1){
+    //             cout <<result[ind]<<" ";
+    //         }
+    //     }
+    //     cout <<endl;
 
-    }
+    // }
 
-    for (int i = QK.size()-5; i < QK.size(); ++i){
-        PhantomPlaintext plain_result;
-        decryptor.decrypt(QK[i], plain_result);
-        vector<double> result;
-        encoder.decode(plain_result, result);
-        cout <<i+1<<"-th ciphertext: ";
-        for (int ind = 0 ; ind < slot_count ; ++ind){
-            if(bias_vec[ind] == 1){
-                cout <<result[ind]<<" ";
-            }
-        }
-        cout <<endl;
+    // for (int i = QK.size()-5; i < QK.size(); ++i){
+    //     PhantomPlaintext plain_result;
+    //     decryptor.decrypt(QK[i], plain_result);
+    //     vector<double> result;
+    //     encoder.decode(plain_result, result);
+    //     cout <<i+1<<"-th ciphertext: ";
+    //     for (int ind = 0 ; ind < slot_count ; ++ind){
+    //         if(bias_vec[ind] == 1){
+    //             cout <<result[ind]<<" ";
+    //         }
+    //     }
+    //     cout <<endl;
 
-    }
+    // }
 
 
 
