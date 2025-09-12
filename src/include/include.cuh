@@ -46,6 +46,39 @@
 
 #include <chrono>
 
+#include <cstdint>
+static inline std::size_t ciphertext_device_bytes(const PhantomCiphertext &ct)
+{
+    // data_ 可能为空（new_size==0 重置），做个保护
+    if (ct.data() == nullptr)
+        return 0;
+    return ct.size() * ct.coeff_modulus_size() * ct.poly_modulus_degree() * sizeof(uint64_t);
+}
+
+static inline std::size_t output_device_bytes(const std::vector<PhantomCiphertext> &output)
+{
+    std::size_t total = 0;
+    for (const auto &ct : output)
+        total += ciphertext_device_bytes(ct);
+    return total;
+}
+
+// 打印为 MB
+static inline void print_output_mem(const std::vector<PhantomCiphertext> &output)
+{
+    const double MB = 1024.0 * 1024.0;
+    std::size_t total = output_device_bytes(output);
+    std::cout << "[GPU] output device memory ~ " << (total / MB) << " MB" << std::endl;
+}
+
+static inline void print_cuda_meminfo(const char *tag)
+{
+    size_t free_b = 0, total_b = 0;
+    cudaMemGetInfo(&free_b, &total_b);
+    const double MB = 1024.0 * 1024.0;
+    std::cout << tag << " Free: " << free_b / MB << " MB, Total: " << total_b / MB << " MB\n";
+}
+
 using phantom::util::cuda_stream_wrapper;
 using std::vector;
 vector<cuda_stream_wrapper> stream_pool; // 线程私有流池
