@@ -36,3 +36,7 @@ Attention Block,38.739
 SelfOutput,72.431
 Attention Block,39.017
 Attention Block,38.665
+Attention Block,49.317
+SelfOutput,113.834
+1st Bootstrapping,571.694
+LayerNorm1,0.978
