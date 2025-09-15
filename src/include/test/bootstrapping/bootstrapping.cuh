@@ -30,10 +30,10 @@ void bootstrapping_test()
   long inverse_deg = 1;
 
   // The following parameters have been adjusted to satisfy the memory constraints of an A100 GPU
-  long logN = 15; // 16 -> 15
+  long logN = 16; // 16 -> 15
   long loge = 10;
 
-  long logn = 13; // 14 -> 13
+  long logn = 15; // 14 -> 13
   long sparse_slots = (1 << logn);
 
   int logp = 46;
@@ -42,7 +42,7 @@ void bootstrapping_test()
 
   int secret_key_hamming_weight = 192;
 
-  int remaining_level = 16;
+  int remaining_level = 19;
   int boot_level = 14; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
   int total_level = remaining_level + boot_level;
 
@@ -104,8 +104,10 @@ void bootstrapping_test()
     gal_steps_vector.push_back((1 << i));
   }
   bootstrapper.addLeftRotKeys_Linear_to_vector_3(gal_steps_vector);
-
-  ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
+  print_cuda_meminfo("Before Galois Key Generation: ");
+  // ckks_evaluator.decryptor.create_galois_keys_from_steps(gal_steps_vector, *(ckks_evaluator.galois_keys));
+  galois_keys = secret_key.create_galois_keys(context);
+  print_cuda_meminfo("After Galois Key Generation: ");
   std::cout << "Galois key generated from steps vector." << endl;
 
   bootstrapper.slot_vec.push_back(logn);

@@ -37,25 +37,25 @@ int main()
     // ct_ct_matrix_mul_test();
     // cout << "unit test Ct-ct matrix multiplication passed!" << endl;
 
-    // cout << "unit test: GeLU" << endl;
-    // gelu_test();
-    // cout << "unit test passed!" << endl;
+       	cout << "unit test: GeLU" << endl;
+    	gelu_test();
+    	cout << "unit test passed!" << endl;
 
-    //    cout << "unit test: LayerNorm" << endl;
-    //    layernorm_test();
-    //    cout << "unit test passed!" << endl;
+    // cout << "unit test: LayerNorm" << endl;
+    // layernorm_test();
+    // cout << "unit test passed!" << endl;
 
     // cout << "unit test: Softmax" << endl;
     // softmax_test();
     // cout << "unit test passed!" << endl;
 
-    // cout << "unit test: Bootstrapping" << endl;
-    // bootstrapping_test();
-    // cout << "unit test passed!" << endl;
+//    cout << "unit test: Bootstrapping" << endl;
+//    bootstrapping_test();
+//    cout << "unit test passed!" << endl;
 
-    cout << "unit test: softmax with bootstrapping" << endl;
-    softmax_boot_test();
-    cout << "unit test passed!" << endl;
+    // cout << "unit test: softmax with bootstrapping" << endl;
+    // softmax_boot_test();
+    // cout << "unit test passed!" << endl;
 
     // cout << "single layer test" << endl;
     // single_layer_test();
