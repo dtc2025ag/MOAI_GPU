@@ -620,7 +620,7 @@ void single_layer_test()
 
     gettimeofday(&tstart1, NULL);
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < num_head; ++i)
     {
         att_block[i] = single_att_block(enc_ecd_x, WQ[i], WK[i], WV[i], bQ[i], bK[i], bV[i],
                                         b_vec, num_input, context, relin_keys, gal_keys_boot, bootstrapper, num_X, secret_key, 16, 10);
@@ -684,8 +684,8 @@ void single_layer_test()
 
     for (int i = 0; i < num_head; ++i){
         for (int j = 0 ; j < output_size ; ++j){
-            // att_output[i*output_size+j] = att_block[i][j];
-            att_output[i*output_size+j] = att_block[0][j];
+            att_output[i*output_size+j] = att_block[i][j];
+            // att_output[i*output_size+j] = att_block[0][j];
         }
     }
 

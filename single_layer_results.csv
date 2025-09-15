@@ -30,21 +30,5 @@ LayerNorm2,0.999
 Total time for one layer,3381.483
 Amortized time,13.209
 
-Attention Block,37.704
-SelfOutput,68.884
-Attention Block,38.739
-SelfOutput,72.431
-Attention Block,39.017
-Attention Block,38.665
-Attention Block,49.317
-SelfOutput,113.834
-1st Bootstrapping,571.694
-LayerNorm1,0.978
-Attention Block,53.786
-Attention Block,47.925
-SelfOutput,102.894
-Attention Block,48.096
-SelfOutput,105.151
-Attention Block,56.872
-SelfOutput,126.877
-1st Bootstrapping,370.399
+2025/09/16
+
