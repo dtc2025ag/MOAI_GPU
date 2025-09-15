@@ -136,18 +136,18 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 
   // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 1));
+  const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //
-// if (stream_pool.size() < static_cast<size_t>(nthreads))
-//   {
-//     stream_pool.reserve(nthreads);
-//     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-//     {
-//       stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
-//     }
-//   }
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
+    {
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      }
+    }
 
 vector<double> time(col_W, 0.0);
 
@@ -160,7 +160,7 @@ vector<double> time(col_W, 0.0);
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    // auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
@@ -178,8 +178,9 @@ vector<double> time(col_W, 0.0);
 
       // acc = enc_X[0] * W[0][i]
       PhantomPlaintext ecd_w_0_i;
-      encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
-      // bridge_to_default(stream); // ★ 跨流桥接
+      // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+      encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
+      bridge_to_default(stream); // ★ 跨流桥接
 
       PhantomCiphertext acc;
       start = chrono::high_resolution_clock::now();
@@ -194,8 +195,9 @@ vector<double> time(col_W, 0.0);
       for (int j = 1; j < row_W; ++j)
       {
         PhantomPlaintext ecd_w_j_i;
-        encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
-        // bridge_to_default(stream); // ★ 每次 encode 后桥接
+        // encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+        encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
+        bridge_to_default(stream); // ★ 每次 encode 后桥接
 
         PhantomCiphertext tmp;
         start = chrono::high_resolution_clock::now();
@@ -215,20 +217,20 @@ vector<double> time(col_W, 0.0);
       }
 
       // 是否 rescale 取决于你的算术设计；这里保持和你原逻辑一致
-      evaluator_local.rescale_to_next_inplace(acc);
+      evaluator_local.rescale_to_next_inplace(acc, stream);
       acc.scale() = scale;
 
       // 放回结果
       output[static_cast<size_t>(i)] = std::move(acc);
     }
-    // cudaStreamSynchronize(stream.get_stream());
+    cudaStreamSynchronize(stream.get_stream());
   }
 
-  double total = 0.0;
-  for (double t : time){
-    total += t;
-  }
-  cout << "ct-pt time(without encoding)" << total << " s" << endl;
+  // double total = 0.0;
+  // for (double t : time){
+  //   total += t;
+  // }
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
 
   // 保守起见：并行段后做一次全局同步，确保所有默认流工作完成
   // cudaDeviceSynchronize();
@@ -473,18 +475,18 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   // #pragma omp parallel for
     // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 1));
+  const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //
-// if (stream_pool.size() < static_cast<size_t>(nthreads))
-//   {
-//     stream_pool.reserve(nthreads);
-//     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-//     {
-//       stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
-//     }
-//   }
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
+    {
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      }
+    }
 
 vector<double> time(128, 0.0);
 #pragma omp parallel num_threads(nthreads)
@@ -494,7 +496,7 @@ vector<double> time(128, 0.0);
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
     
     const int tid = omp_get_thread_num();
-    // auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
@@ -512,8 +514,9 @@ vector<double> time(128, 0.0);
       {
         // encode w[0][i]
         PhantomPlaintext ecd_w_0_i;
-        encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
-        // bridge_to_default(stream); // ★ 跨流桥接
+        // encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
+        bridge_to_default(stream); // ★ 跨流桥接
         // enc_X[0]*ecd_w[0][i]
         start = chrono::high_resolution_clock::now();
         evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
@@ -526,8 +529,9 @@ vector<double> time(128, 0.0);
         {
           // encode w[j][i]
           PhantomPlaintext ecd_w_j_i;
-          encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
-          // bridge_to_default(stream); // ★ 每次 encode 后桥接
+          // encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+          encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
+          bridge_to_default(stream); // ★ 每次 encode 后桥接
 
           // enc_X[j]*ecd_w[j][i]
           PhantomCiphertext temp;
@@ -541,19 +545,19 @@ vector<double> time(128, 0.0);
           time[i] += elapsed;
         }
 
-        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k]);
+        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k], stream);
         output[i * col_W_t + k].scale() = scale;
         // if(i == 0) cout <<log2(output[i*col_W_t+k].scale())<<endl;
       }
     }
-    // cudaStreamSynchronize(stream.get_stream());
+    cudaStreamSynchronize(stream.get_stream());
   }
 
-  double total = 0.0;
-  for (double t : time){
-    total += t;
-  }
-  cout << "ct-pt time(without encoding)" << total << " s" << endl;
+  // double total = 0.0;
+  // for (double t : time){
+  //   total += t;
+  // }
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
 
   return output;
 }
@@ -645,18 +649,18 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
   // #pragma omp parallel for
     // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 1));
+  const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //
-// if (stream_pool.size() < static_cast<size_t>(nthreads))
-//   {
-//     stream_pool.reserve(nthreads);
-//     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-//     {
-//       stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
-//     }
-//   }
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
+    {
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      }
+    }
 
 vector<double> time(128, 0.0);
 
@@ -669,7 +673,7 @@ vector<double> time(128, 0.0);
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    // auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
@@ -695,8 +699,9 @@ vector<double> time(128, 0.0);
           }
         }
         PhantomPlaintext ecd_w_0_i;
-        encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
-        // bridge_to_default(stream); // ★ 跨流桥接
+        // encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
+        bridge_to_default(stream); // ★ 跨流桥接
         // enc_X[0]*ecd_w[0][i]
         start = chrono::high_resolution_clock::now();
         evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
@@ -720,8 +725,9 @@ vector<double> time(128, 0.0);
             }
           }
           PhantomPlaintext ecd_w_j_i;
-          encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
-          // bridge_to_default(stream); // ★ 每次 encode 后桥接
+          // encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+          encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
+          bridge_to_default(stream); // ★ 每次 encode 后桥接
           // enc_X[j]*ecd_w[j][i]
           PhantomCiphertext tempx;
           start = chrono::high_resolution_clock::now();
@@ -736,19 +742,19 @@ vector<double> time(128, 0.0);
           // cout <<"add. "<<endl;
         }
 
-        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k]);
+        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k], stream);
         output[i * col_W_t + k].scale() = scale;
       }
     }
-    // cudaStreamSynchronize(stream.get_stream());
+    cudaStreamSynchronize(stream.get_stream());
   }
   // cout <<log(output[0].scale())<<endl;
 
-  double total = 0.0;
-  for (double t : time){
-    total += t;
-  }
-  cout << "ct-pt time(without encoding)" << total << " s" << endl;
+  // double total = 0.0;
+  // for (double t : time){
+  //   total += t;
+  // }
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
 
   return output;
 }

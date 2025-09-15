@@ -1294,3 +1294,6 @@ single_layer_without_softmaxboot(softmax*V),0.506
 single_layer_without_softmaxboot(QKV),39.517
 single_layer_without_softmaxboot(QK^T),15.741
 single_layer_without_softmaxboot(softmax*V),0.560
+ct_pt_matrix_mul_without_preprocessing,6.248
+ct_pt_matrix_mul_without_preprocessing,3.804
+ct_pt_matrix_mul_without_preprocessing,3.760

@@ -53,13 +53,13 @@ int main()
     // bootstrapping_test();
     // cout << "unit test passed!" << endl;
 
-    cout << "unit test: softmax with bootstrapping" << endl;
-    softmax_boot_test();
-    cout << "unit test passed!" << endl;
+    // cout << "unit test: softmax with bootstrapping" << endl;
+    // softmax_boot_test();
+    // cout << "unit test passed!" << endl;
 
-    // cout << "single layer test" << endl;
-    // single_layer_test();
-    // cout << "single layer test passed!" << endl;
+    cout << "single layer test" << endl;
+    single_layer_test();
+    cout << "single layer test passed!" << endl;
 
     return 0;
 }
