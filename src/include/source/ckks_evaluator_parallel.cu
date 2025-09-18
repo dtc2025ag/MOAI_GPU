@@ -8,7 +8,6 @@
 using namespace phantom::arith;
 using namespace phantom::util;
 using namespace moai;
-// using namespace nexus;
 
 void CKKSEvaluator::print_decoded_pt(PhantomPlaintext &pt, int num) {
   vector<double> v;

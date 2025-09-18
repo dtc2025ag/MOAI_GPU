@@ -49,7 +49,6 @@
 #include <cstdint>
 static inline std::size_t ciphertext_device_bytes(const PhantomCiphertext &ct)
 {
-    // data_ 可能为空（new_size==0 重置），做个保护
     if (ct.data() == nullptr)
         return 0;
     return ct.size() * ct.coeff_modulus_size() * ct.poly_modulus_degree() * sizeof(uint64_t);
@@ -81,20 +80,20 @@ static inline void print_cuda_meminfo(const char *tag)
 
 using phantom::util::cuda_stream_wrapper;
 using std::vector;
-vector<cuda_stream_wrapper> stream_pool; // 线程私有流池
+vector<cuda_stream_wrapper> stream_pool; 
 
-// 把“自定义流上的完成”桥接到默认流，避免默认流读到半成品
+
 static inline void bridge_to_default(const cuda_stream_wrapper &sw)
 {
     auto dst = phantom::util::global_variables::default_stream->get_stream();
     if (sw.get_stream() == dst)
-        return; // 同一条流就不需要桥接
+        return; 
 
     cudaEvent_t ev;
     cudaEventCreateWithFlags(&ev, cudaEventDisableTiming);
-    cudaEventRecord(ev, sw.get_stream()); // 在生产流上记录事件
-    cudaStreamWaitEvent(dst, ev, 0);      // 让“库的默认流”等待事件
-    cudaEventDestroy(ev);                 // 等待已入队，销毁事件对象即可
+    cudaEventRecord(ev, sw.get_stream()); 
+    cudaStreamWaitEvent(dst, ev, 0);      
+    cudaEventDestroy(ev);                 
 }
 
 PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
@@ -103,7 +102,7 @@ PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
 {
     PhantomCiphertext dst;
 
-    // 复制元数据
+    
     dst.set_chain_index(src.chain_index());
     dst.set_poly_modulus_degree(src.poly_modulus_degree());
     dst.set_coeff_modulus_size(src.coeff_modulus_size());
@@ -112,13 +111,13 @@ PhantomCiphertext deep_copy_cipher(const PhantomCiphertext &src,
     dst.set_ntt_form(src.is_ntt_form());
     dst.SetNoiseScaleDeg(src.GetNoiseScaleDeg());
 
-    // 分配和源一样大小的缓冲
+    
     dst.reinit_like(src.size(),
                     src.coeff_modulus_size(),
                     src.poly_modulus_degree(),
                     stream.get_stream());
 
-    // 真正拷贝显存数据
+    
     size_t count = src.size() * src.coeff_modulus_size() * src.poly_modulus_degree();
     cudaMemcpyAsync(dst.data(), src.data(),
                     count * sizeof(uint64_t),
@@ -136,7 +135,7 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
 
     for (size_t i = 0; i < src.size(); i++)
     {
-        // 复制元数据
+        
         dst[i].set_chain_index(src[i].chain_index());
         dst[i].set_poly_modulus_degree(src[i].poly_modulus_degree());
         dst[i].set_coeff_modulus_size(src[i].coeff_modulus_size());
@@ -145,13 +144,13 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
         dst[i].set_ntt_form(src[i].is_ntt_form());
         dst[i].SetNoiseScaleDeg(src[i].GetNoiseScaleDeg());
 
-        // 分配和源一样大小的缓冲
+        
         dst[i].reinit_like(src[i].size(),
                            src[i].coeff_modulus_size(),
                            src[i].poly_modulus_degree(),
                            stream.get_stream());
 
-        // 真正拷贝显存数据
+        
         size_t count = src[i].size() * src[i].coeff_modulus_size() * src[i].poly_modulus_degree();
         cudaMemcpyAsync(dst[i].data(), src[i].data(),
                         count * sizeof(uint64_t),
