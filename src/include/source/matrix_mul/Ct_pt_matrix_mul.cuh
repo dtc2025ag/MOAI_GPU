@@ -148,7 +148,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
       }
     }
 
-vector<double> time(col_W, 0.0);
+  vector<double> time(col_W, 0.0);
 
 
 #pragma omp parallel num_threads(nthreads)
@@ -169,7 +169,6 @@ vector<double> time(col_W, 0.0);
 
     chrono::high_resolution_clock::time_point start, end;
     double elapsed;
-
 
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)
@@ -209,8 +208,15 @@ vector<double> time(col_W, 0.0);
         time[i] += elapsed;
       }
 
+      start = chrono::high_resolution_clock::now();
+      // 是否 rescale 取决于你的算术设计；这里保持和你原逻辑一致
       evaluator_local.rescale_to_next_inplace(acc, stream);
       acc.scale() = scale;
+
+      end = chrono::high_resolution_clock::now();
+      elapsed = duration_cast<duration<double>>(end - start).count();
+      // cout << "[DEBUG] time: " << elapsed << endl;
+      time[i] += elapsed;
 
       output[static_cast<size_t>(i)] = std::move(acc);
     }
@@ -455,6 +461,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   int col_W_t = col_W / 128;
 
   // #pragma omp parallel for
+  // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
@@ -468,13 +475,13 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
       }
     }
 
-vector<double> time(128, 0.0);
+  vector<double> time(128, 0.0);
 #pragma omp parallel num_threads(nthreads)
-  { 
+  {
     PhantomCKKSEncoder phantom_encoder_local(context);
     moai::Encoder encoder_local(&context, &phantom_encoder_local);
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
-    
+
     const int tid = omp_get_thread_num();
     auto &stream = stream_pool[tid]; 
     // phantom::util::cuda_stream_wrapper stream;
@@ -627,6 +634,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
   // cout <<col_W_t<<endl;
 
   // #pragma omp parallel for
+  // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
@@ -640,7 +648,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
       }
     }
 
-vector<double> time(128, 0.0);
+  vector<double> time(128, 0.0);
 
 #pragma omp parallel num_threads(nthreads)
   {

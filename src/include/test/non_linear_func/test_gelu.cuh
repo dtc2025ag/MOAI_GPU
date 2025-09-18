@@ -13,10 +13,10 @@ void gelu_test()
     long scale_factor = 2;
     long inverse_deg = 1;
 
-    long logN = 15;
+    long logN = 16;
     long loge = 10;
 
-    long logn = 14;
+    long logn = 15;
     long sparse_slots = (1 << logn);
 
     int logp = 46;
@@ -26,7 +26,7 @@ void gelu_test()
     int secret_key_hamming_weight = 192;
 
     // Calculation required
-    int boot_level = 14; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
+    int boot_level = 0; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
 
     int remaining_level = 8;
     int total_level = remaining_level + boot_level;
@@ -95,9 +95,9 @@ void gelu_test()
     struct timeval tstart1, tend1;
 
     // construct input
-    int num_X = 128;
+    int num_X = 256;
     int num_row = 128;
-    int num_col = 128;
+    int num_col = 3072;
     cout << "Number of matrices in one batch = " << num_X << endl;
     vector<vector<vector<double>>> input_x(num_X, vector<vector<double>>(num_row, vector<double>(num_col, 0)));
     for (int i = 0; i < num_X; ++i)
@@ -128,7 +128,7 @@ void gelu_test()
     cout << "encode and encrypt X. num of ct = " << enc_ecd_x.size() << endl;
     cout << "Modulus chain index for enc x: " << context.get_context_data(enc_ecd_x[0].params_id()).chain_depth() << endl;
 
-#pragma omp parallel for
+    // #pragma omp parallel for
 
     for (int i = 0; i < num_col; ++i)
     {
@@ -190,25 +190,25 @@ void gelu_test()
 
     gettimeofday(&tend1, NULL);
     double gelu_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
-    cout << "gelu time = " << gelu_time / num_col << endl;
+    cout << "gelu time = " << gelu_time << endl;
 
     cout << "Modulus chain index for gelu: " << context.get_context_data(output[0].params_id()).chain_depth() << endl;
-    append_csv_row("../results.csv", "gelu_v2", gelu_time / num_col);
+    append_csv_row("../results.csv", "gelu_v2", gelu_time);
     // decrypt
-    cout << "Decrypt + decode result of intermediate_gelu: " << endl;
-    for (int i = 0; i < output.size(); ++i)
-    {
-        PhantomPlaintext plain_result;
-        decryptor.decrypt(output[i], plain_result);
-        vector<double> result;
-        encoder.decode(plain_result, result);
-        cout << i + 1 << "-th ciphertext: ";
-        for (int ind = 0; ind < 10; ++ind)
-        {
-            cout << result[ind] << ", ";
-        }
-        cout << endl;
-    }
+    // cout << "Decrypt + decode result of intermediate_gelu: " << endl;
+    // for (int i = 0; i < output.size(); ++i)
+    // {
+    //     PhantomPlaintext plain_result;
+    //     decryptor.decrypt(output[i], plain_result);
+    //     vector<double> result;
+    //     encoder.decode(plain_result, result);
+    //     cout << i + 1 << "-th ciphertext: ";
+    //     for (int ind = 0; ind < 10; ++ind)
+    //     {
+    //         cout << result[ind] << ", ";
+    //     }
+    //     cout << endl;
+    // }
 
     cout << endl;
 }

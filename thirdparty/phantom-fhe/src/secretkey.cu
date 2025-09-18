@@ -12,10 +12,10 @@ using namespace phantom;
 using namespace phantom::util;
 using namespace phantom::arith;
 
-void
-PhantomPublicKey::encrypt_zero_asymmetric_internal_internal(const PhantomContext &context, PhantomCiphertext &cipher,
-                                                            size_t chain_index, bool is_ntt_form,
-                                                            const cudaStream_t &stream) const {
+void PhantomPublicKey::encrypt_zero_asymmetric_internal_internal(const PhantomContext &context, PhantomCiphertext &cipher,
+                                                                 size_t chain_index, bool is_ntt_form,
+                                                                 const cudaStream_t &stream) const
+{
     auto &context_data = context.get_context_data(chain_index);
     auto &parms = context_data.parms();
     auto &coeff_modulus = parms.coeff_modulus();
@@ -41,7 +41,7 @@ PhantomPublicKey::encrypt_zero_asymmetric_internal_internal(const PhantomContext
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
     // in <-- ternary
     sample_ternary_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-            u.get(), prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
+        u.get(), prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
 
     // transform u into NTT
     nwt_2d_radix8_forward_inplace(u.get(), context.gpu_rns_tables(), coeff_mod_size, 0, stream);
@@ -49,48 +49,55 @@ PhantomPublicKey::encrypt_zero_asymmetric_internal_internal(const PhantomContext
     // then, generate the cbd error
     random_bytes(prng_seed_error.get(), phantom::util::global_variables::prng_seed_byte_count, stream);
 
-    if (is_ntt_form) {
-        for (size_t i = 0; i < cipher.size(); i++) {
+    if (is_ntt_form)
+    {
+        for (size_t i = 0; i < cipher.size(); i++)
+        {
             // CAUTION: pk_ contains two polys with max modulus size, use it with caution when chain_index != 0
             uint64_t *ci = cipher.data() + i * poly_degree * coeff_mod_size;
             uint64_t *pki = pk_.data() + i * poly_degree * pk_.coeff_modulus_size();
             // transform e into NTT, res stored in cipher
             sample_error_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    ci, prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
-            if (parms.scheme() == scheme_type::bgv) {
+                ci, prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
+            if (parms.scheme() == scheme_type::bgv)
+            {
                 // noise = te instead of e in BGV
                 multiply_scalar_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                        ci, context.plain_modulus(), context.plain_modulus_shoup(),
-                        base_rns, ci, poly_degree, coeff_mod_size);
+                    ci, context.plain_modulus(), context.plain_modulus_shoup(),
+                    base_rns, ci, poly_degree, coeff_mod_size);
             }
 
             nwt_2d_radix8_forward_inplace(ci, context.gpu_rns_tables(), coeff_mod_size, 0, stream);
             // u * pk + e or (u*pk + te for BGV)
             multiply_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    u.get(), pki, ci, base_rns, ci, poly_degree, coeff_mod_size);
+                u.get(), pki, ci, base_rns, ci, poly_degree, coeff_mod_size);
         }
-    } else {
+    }
+    else
+    {
         auto error = make_cuda_auto_ptr<uint64_t>(coeff_mod_size * poly_degree, stream);
 
-        for (size_t i = 0; i < cipher.size(); i++) {
+        for (size_t i = 0; i < cipher.size(); i++)
+        {
             uint64_t *ci = cipher.data() + i * poly_degree * coeff_mod_size;
             uint64_t *pki = pk_.data() + i * poly_degree * pk_.coeff_modulus_size_;
 
             multiply_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    pki, u.get(), base_rns, ci, poly_degree, coeff_mod_size);
+                pki, u.get(), base_rns, ci, poly_degree, coeff_mod_size);
 
             nwt_2d_radix8_backward_inplace(ci, context.gpu_rns_tables(), coeff_mod_size, 0, stream);
             // obtain e res stored in cipher
             sample_error_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    error.get(), prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
+                error.get(), prng_seed_error.get(), base_rns, poly_degree, coeff_mod_size);
             add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    ci, error.get(), base_rns, ci, poly_degree, coeff_mod_size);
+                ci, error.get(), base_rns, ci, poly_degree, coeff_mod_size);
         }
     }
 }
 
 void PhantomPublicKey::encrypt_zero_asymmetric_internal(const PhantomContext &context, PhantomCiphertext &cipher,
-                                                        size_t chain_index, const cudaStream_t &stream) const {
+                                                        size_t chain_index, const cudaStream_t &stream) const
+{
     auto &context_data = context.get_context_data(chain_index);
     auto &parms = context_data.parms();
     auto &coeff_modulus = parms.coeff_modulus();
@@ -99,16 +106,20 @@ void PhantomPublicKey::encrypt_zero_asymmetric_internal(const PhantomContext &co
     auto coeff_mod_size = coeff_modulus.size();
 
     bool is_ntt_form = false;
-    if (parms.scheme() == scheme_type::ckks || parms.scheme() == scheme_type::bgv) {
+    if (parms.scheme() == scheme_type::ckks || parms.scheme() == scheme_type::bgv)
+    {
         is_ntt_form = true;
-    } else if (parms.scheme() != scheme_type::bfv) {
+    }
+    else if (parms.scheme() != scheme_type::bfv)
+    {
         throw invalid_argument("unsupported scheme");
     }
 
     cipher.resize(context, chain_index, 2, stream);
 
     auto prev_index = context.get_previous_index(chain_index);
-    if (prev_index == chain_index) {
+    if (prev_index == chain_index)
+    {
         // Does not require modulus switching
         return encrypt_zero_asymmetric_internal_internal(context, cipher, chain_index, is_ntt_form, stream);
     }
@@ -118,11 +129,12 @@ void PhantomPublicKey::encrypt_zero_asymmetric_internal(const PhantomContext &co
     // moddown
     size_t size_P = parms.special_modulus_size();
 
-    for (size_t i = 0; i < temp_cipher.size(); i++) {
+    for (size_t i = 0; i < temp_cipher.size(); i++)
+    {
         uint64_t *cx_i = temp_cipher.data() + i * poly_degree * (coeff_mod_size + size_P);
         uint64_t *ct_i = cipher.data() + i * poly_degree * coeff_mod_size;
         context.get_context_data(1).gpu_rns_tool().moddown(
-                ct_i, cx_i, context.gpu_rns_tables(), parms.scheme(), stream);
+            ct_i, cx_i, context.gpu_rns_tables(), parms.scheme(), stream);
     }
 
     cipher.is_ntt_form_ = is_ntt_form;
@@ -130,10 +142,10 @@ void PhantomPublicKey::encrypt_zero_asymmetric_internal(const PhantomContext &co
     cipher.chain_index_ = chain_index;
 }
 
-
 void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const PhantomPlaintext &plain,
                                           PhantomCiphertext &cipher,
-                                          const phantom::util::cuda_stream_wrapper &stream_wrapper) {
+                                          const phantom::util::cuda_stream_wrapper &stream_wrapper)
+{
     auto &context_data = context.get_context_data(0); // i.e. 0 is key_param_id
     auto &parms = context_data.parms();
     auto scheme = parms.scheme();
@@ -144,12 +156,15 @@ void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const P
     cipher.correction_factor_ = 1;
     cipher.noiseScaleDeg_ = 1;
 
-    if (scheme == scheme_type::bfv) {
+    if (scheme == scheme_type::bfv)
+    {
         encrypt_zero_asymmetric_internal(context, cipher, context.get_first_index(), s);
         // calculate [plain * coeff / plain-modulus].
         // return [plain * coeff / plain-modulus + c0, c1]
         multiply_add_plain_with_scaling_variant(context, plain, context.get_first_index(), cipher, s);
-    } else if (scheme == scheme_type::ckks) {
+    }
+    else if (scheme == scheme_type::ckks)
+    {
         // [c0, c1] is the encryption of 0
         encrypt_zero_asymmetric_internal(context, cipher, plain.chain_index(), s);
 
@@ -163,11 +178,13 @@ void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const P
         // c0 = c0 + plaintext
         uint64_t gridDimGlb = poly_degree * ckks_coeff_mod_size / blockDimGlb.x;
         add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                cipher.data(), plain.data(), base_rns, cipher.data(), poly_degree, ckks_coeff_mod_size);
+            cipher.data(), plain.data(), base_rns, cipher.data(), poly_degree, ckks_coeff_mod_size);
 
         pk_.chain_index_ = plain.chain_index();
         cipher.scale_ = plain.scale();
-    } else if (scheme == scheme_type::bgv) {
+    }
+    else if (scheme == scheme_type::bgv)
+    {
         // c0 = pl_0*u + t*e_0
         // c1 = pk_1*u + t*e_1
         encrypt_zero_asymmetric_internal(context, cipher, context.get_first_index(), s);
@@ -180,7 +197,8 @@ void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const P
 
         // c0 = c0 + plaintext
         auto plain_copy = make_cuda_auto_ptr<uint64_t>(bgv_coeff_mod_size * poly_degree, s);
-        for (size_t i = 0; i < bgv_coeff_mod_size; i++) {
+        for (size_t i = 0; i < bgv_coeff_mod_size; i++)
+        {
             // modup t -> Q
             nwt_2d_radix8_forward_modup_fuse(plain_copy.get() + i * poly_degree, plain.data(), i,
                                              context.gpu_rns_tables(), 1, 0, s);
@@ -188,8 +206,10 @@ void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const P
 
         uint64_t gridDimGlb = poly_degree * bgv_coeff_mod_size / blockDimGlb.x;
         add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                cipher.data(), plain_copy.get(), base_rns, cipher.data(), poly_degree, bgv_coeff_mod_size);
-    } else {
+            cipher.data(), plain_copy.get(), base_rns, cipher.data(), poly_degree, bgv_coeff_mod_size);
+    }
+    else
+    {
         throw std::invalid_argument("unsupported scheme.");
     }
 
@@ -199,9 +219,11 @@ void PhantomPublicKey::encrypt_asymmetric(const PhantomContext &context, const P
 /************************************ PhantomSecretKey ************************************************/
 
 void PhantomSecretKey::compute_secret_key_array(const PhantomContext &context, size_t max_power,
-                                                const cudaStream_t &stream) {
+                                                const cudaStream_t &stream)
+{
 
-    if (max_power <= 1 || max_power <= sk_max_power_) {
+    if (max_power <= 1 || max_power <= sk_max_power_)
+    {
         return;
     }
 
@@ -220,13 +242,14 @@ void PhantomSecretKey::compute_secret_key_array(const PhantomContext &context, s
                     cudaMemcpyDeviceToDevice, stream);
 
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
-    for (size_t i = 0; i < max_power - sk_max_power_; i++) {
+    for (size_t i = 0; i < max_power - sk_max_power_; i++)
+    {
         uint64_t *prev_power = new_secret_key_array.get() + (i + sk_max_power_ - 1) * coeff_mod_size * poly_degree;
         uint64_t *curr_power = new_secret_key_array.get() + (i + sk_max_power_) * coeff_mod_size * poly_degree;
 
         multiply_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                prev_power, secret_key_array(), base_rns, curr_power,
-                poly_degree, coeff_mod_size);
+            prev_power, secret_key_array(), base_rns, curr_power,
+            poly_degree, coeff_mod_size);
     }
 
     // Release the old secret_key_array_
@@ -236,7 +259,8 @@ void PhantomSecretKey::compute_secret_key_array(const PhantomContext &context, s
 
 void PhantomSecretKey::encrypt_zero_symmetric(const PhantomContext &context, PhantomCiphertext &cipher,
                                               const uint8_t *prng_seed_a, size_t chain_index, bool is_ntt_form,
-                                              const cudaStream_t &stream) const {
+                                              const cudaStream_t &stream) const
+{
     auto &context_data = context.get_context_data(chain_index);
     auto &parms = context_data.parms();
     auto &coeff_modulus = parms.coeff_modulus();
@@ -262,43 +286,48 @@ void PhantomSecretKey::encrypt_zero_symmetric(const PhantomContext &context, Pha
     auto u = make_cuda_auto_ptr<uint64_t>(coeff_mod_size * poly_degree, stream);
 
     sample_error_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-            u.get(), prng_seed_error.get(), base_rns, poly_degree,
-            coeff_mod_size);
+        u.get(), prng_seed_error.get(), base_rns, poly_degree,
+        coeff_mod_size);
 
-    if (is_ntt_form) {
-        if (parms.scheme() == scheme_type::bgv) {
+    if (is_ntt_form)
+    {
+        if (parms.scheme() == scheme_type::bgv)
+        {
             // noise = te instead of e in BGV
             multiply_scalar_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                    u.get(), context.plain_modulus(), context.plain_modulus_shoup(), base_rns, u.get(),
-                    poly_degree, coeff_mod_size);
+                u.get(), context.plain_modulus(), context.plain_modulus_shoup(), base_rns, u.get(),
+                poly_degree, coeff_mod_size);
         }
         // transform e into NTT, here coeff_mod_size corresponding to the chain index
         nwt_2d_radix8_forward_inplace(u.get(), context.gpu_rns_tables(), coeff_mod_size, 0, stream);
         // uniform random generator
         sample_uniform_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                c1, prng_seed_a, base_rns, poly_degree, coeff_mod_size);
+            c1, prng_seed_a, base_rns, poly_degree, coeff_mod_size);
         // c0 = -(as + e) or c0 = -(as + te), c1 = a
         multiply_and_add_negate_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                c1, secret_key_array(), u.get(), base_rns, c0, poly_degree, coeff_mod_size);
-    } else {
+            c1, secret_key_array(), u.get(), base_rns, c0, poly_degree, coeff_mod_size);
+    }
+    else
+    {
         // uniform random generator
         sample_uniform_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                c1, prng_seed_a, base_rns, poly_degree, coeff_mod_size);
+            c1, prng_seed_a, base_rns, poly_degree, coeff_mod_size);
         // c0 = c1 * s
         multiply_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                c1, secret_key_array(), base_rns, c0, poly_degree, coeff_mod_size);
+            c1, secret_key_array(), base_rns, c0, poly_degree, coeff_mod_size);
         // c0 backward, here coeff_mod_size corresponding to the chain index
         nwt_2d_radix8_backward_inplace(c0, context.gpu_rns_tables(), coeff_mod_size, 0, stream);
         // c0 = -(c0 + e)
         add_and_negate_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                c0, u.get(), base_rns, c0, poly_degree, coeff_mod_size);
+            c0, u.get(), base_rns, c0, poly_degree, coeff_mod_size);
         // c1 backward
         nwt_2d_radix8_backward_inplace(c1, context.gpu_rns_tables(), coeff_mod_size, 0, stream);
     }
 }
 
 void PhantomSecretKey::generate_one_kswitch_key(const PhantomContext &context, uint64_t *new_key,
-                                                PhantomRelinKey &relin_keys, const cudaStream_t &stream) const {
+                                                PhantomRelinKey &relin_keys, const cudaStream_t &stream) const
+{
     // Extract encryption parameters.
     auto &key_context_data = context.get_context_data(0);
     auto &key_parms = key_context_data.parms();
@@ -321,7 +350,8 @@ void PhantomSecretKey::generate_one_kswitch_key(const PhantomContext &context, u
     relin_keys.public_keys_ptr_ = make_cuda_auto_ptr<uint64_t *>(dnum, stream);
 
     // First initiate the pk_ = [-(as+e), a]
-    for (size_t twr = 0; twr < dnum; twr++) {
+    for (size_t twr = 0; twr < dnum; twr++)
+    {
         auto prng_seed_a = make_cuda_auto_ptr<uint8_t>(phantom::util::global_variables::prng_seed_byte_count, stream);
         random_bytes(prng_seed_a.get(), phantom::util::global_variables::prng_seed_byte_count, stream);
         PhantomCiphertext pk;
@@ -338,17 +368,20 @@ void PhantomSecretKey::generate_one_kswitch_key(const PhantomContext &context, u
     // Second compute P_{w,q}(s^2)+(-(as+e))
     uint64_t gridDimGlb = poly_degree * dnum * alpha / blockDimGlb.x;
     multiply_temp_mod_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-            new_key, relin_keys.public_keys_ptr_.get(), base_rns, relin_keys.public_keys_ptr_.get(), poly_degree, dnum,
-            alpha, bigP_mod_q, bigP_mod_q_shoup);
+        new_key, relin_keys.public_keys_ptr_.get(), base_rns, relin_keys.public_keys_ptr_.get(), poly_degree, dnum,
+        alpha, bigP_mod_q, bigP_mod_q_shoup);
 }
 
 // Newly added
-std::vector<size_t> adjust_sk_hamming_weight(uint64_t *arr, size_t arr_size, size_t hamming_weight, uint64_t coeff_modulus) {
+std::vector<size_t> adjust_sk_hamming_weight(uint64_t *arr, size_t arr_size, size_t hamming_weight, uint64_t coeff_modulus)
+{
     // Count the number of non-zero values in the array
-    size_t non_zero_count = std::count_if(arr, arr + arr_size, [](uint64_t x) { return x != 0; });
+    size_t non_zero_count = std::count_if(arr, arr + arr_size, [](uint64_t x)
+                                          { return x != 0; });
 
     // If the current number of non-zero values is already equal to the desired hamming_weight, do nothing
-    if (non_zero_count == hamming_weight) {
+    if (non_zero_count == hamming_weight)
+    {
         throw std::invalid_argument("The hamming weight of the secret key is already equal to the desired hamming weight.");
     }
 
@@ -357,11 +390,14 @@ std::vector<size_t> adjust_sk_hamming_weight(uint64_t *arr, size_t arr_size, siz
     std::mt19937 gen(rd());
 
     // Reduce the number of non-zero values
-    if (non_zero_count > hamming_weight) {
+    if (non_zero_count > hamming_weight)
+    {
         // Indices of non-zero elements
         std::vector<size_t> non_zero_indices;
-        for (size_t i = 0; i < arr_size; ++i) {
-            if (arr[i] != 0) {
+        for (size_t i = 0; i < arr_size; ++i)
+        {
+            if (arr[i] != 0)
+            {
                 non_zero_indices.push_back(i);
             }
         }
@@ -371,26 +407,31 @@ std::vector<size_t> adjust_sk_hamming_weight(uint64_t *arr, size_t arr_size, siz
 
         // Zero out the necessary number of non-zero elements to match the desired hamming_weight
         size_t elements_to_zero = non_zero_count - hamming_weight;
-        for (size_t i = 0; i < elements_to_zero; ++i) {
+        for (size_t i = 0; i < elements_to_zero; ++i)
+        {
             arr[non_zero_indices[i]] = 0;
         }
 
         return non_zero_indices;
     }
-    
+
     throw std::invalid_argument("Increasing the hamming weight of the secret key is not supported.");
 }
 
 // Newly added
-void adjust_sk_hamming_weight(uint64_t *arr, size_t hamming_weight, std::vector<size_t> non_zero_indices) {
+void adjust_sk_hamming_weight(uint64_t *arr, size_t hamming_weight, std::vector<size_t> non_zero_indices)
+{
     size_t elements_to_zero = non_zero_indices.size() - hamming_weight;
-    for (size_t i = 0; i < elements_to_zero; ++i) {
+    for (size_t i = 0; i < elements_to_zero; ++i)
+    {
         arr[non_zero_indices[i]] = 0;
     }
 }
 
-void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaStream_t &stream) {
-    if (gen_flag_) {
+void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaStream_t &stream)
+{
+    if (gen_flag_)
+    {
         throw std::logic_error("cannot generate secret key twice");
     }
 
@@ -418,48 +459,48 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
 
     std::cout << "Launching kernel with gridDim: " << gridDimGlb
-          << ", blockDim: " << blockDimGlb.x << std::endl;
-
+              << ", blockDim: " << blockDimGlb.x << std::endl;
 
     sample_ternary_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-            secret_key_array_.get(), prng_seed_error.get(), base_rns,
-            poly_degree, coeff_mod_size);
+        secret_key_array_.get(), prng_seed_error.get(), base_rns,
+        poly_degree, coeff_mod_size);
 
     cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
+    if (err != cudaSuccess)
+    {
         std::cerr << "CUDA kernel launch failed: " << cudaGetErrorString(err) << std::endl;
     }
     cudaStreamSynchronize(s);
-    
+
     // Newly added: adjust the hamming weight of the secret key if necessary
-    if (auto sk_hamming_weight = context.key_context_data().parms().secret_key_hamming_weight()) {
-			std::cout << "Generating secret key with hamming weight: " << sk_hamming_weight << std::endl;
+    if (auto sk_hamming_weight = context.key_context_data().parms().secret_key_hamming_weight())
+    {
+        std::cout << "Generating secret key with hamming weight: " << sk_hamming_weight << std::endl;
 
-	  	// Make sure device has finished previous kernels
-      cudaStreamSynchronize(s);
+        // Make sure device has finished previous kernels
+        cudaStreamSynchronize(s);
 
-      // Copy sk data from device to host
-      uint64_t *sk_arr_non_ntt = new uint64_t[poly_degree * coeff_mod_size];
-      cudaMemcpy(sk_arr_non_ntt, secret_key_array_.get(), poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+        // Copy sk data from device to host
+        uint64_t *sk_arr_non_ntt = new uint64_t[poly_degree * coeff_mod_size];
+        cudaMemcpy(sk_arr_non_ntt, secret_key_array_.get(), poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyDeviceToHost);
 
+        //   for (int i = 0; i < 10; ++i) {
+        //         std::cout << "sk_arr_non_ntt[" << i << "] = " << sk_arr_non_ntt[i] << std::endl;
+        //     }
 
-    //   for (int i = 0; i < 10; ++i) {
-    //         std::cout << "sk_arr_non_ntt[" << i << "] = " << sk_arr_non_ntt[i] << std::endl;
-    //     }
+        // Adjust hamming weight for each rns sk (each sk should be the same but with different modulus)
 
+        // Get the indices of non-zero elements in the secret keys
+        std::vector<size_t> non_zero_indices = adjust_sk_hamming_weight(sk_arr_non_ntt, poly_degree, sk_hamming_weight, coeff_modulus[0].value());
 
-      // Adjust hamming weight for each rns sk (each sk should be the same but with different modulus)
-      
-			// Get the indices of non-zero elements in the secret keys
-      std::vector<size_t> non_zero_indices = adjust_sk_hamming_weight(sk_arr_non_ntt, poly_degree, sk_hamming_weight, coeff_modulus[0].value());
-      
-			// Adjust the hamming weight for the rest of the secret keys (set the randomly chosen non-zero indices from last step to zero)
-      for (auto i = 1; i < coeff_mod_size; i++) {
-        adjust_sk_hamming_weight(sk_arr_non_ntt + i * poly_degree, sk_hamming_weight, non_zero_indices);
-      }
+        // Adjust the hamming weight for the rest of the secret keys (set the randomly chosen non-zero indices from last step to zero)
+        for (auto i = 1; i < coeff_mod_size; i++)
+        {
+            adjust_sk_hamming_weight(sk_arr_non_ntt + i * poly_degree, sk_hamming_weight, non_zero_indices);
+        }
 
-      // Copy the adjusted secret key back to the device
-      cudaMemcpy(secret_key_array_.get(), sk_arr_non_ntt, poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyHostToDevice);
+        // Copy the adjusted secret key back to the device
+        cudaMemcpy(secret_key_array_.get(), sk_arr_non_ntt, poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyHostToDevice);
     }
 
     // Compute the NTT form of secret key and
@@ -471,7 +512,8 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
     gen_flag_ = true;
 }
 
-PhantomPublicKey PhantomSecretKey::gen_publickey(const PhantomContext &context) const {
+PhantomPublicKey PhantomSecretKey::gen_publickey(const PhantomContext &context) const
+{
     PhantomPublicKey pk;
 
     const auto &s = phantom::util::global_variables::default_stream->get_stream();
@@ -485,7 +527,8 @@ PhantomPublicKey PhantomSecretKey::gen_publickey(const PhantomContext &context) 
     return pk;
 }
 
-PhantomRelinKey PhantomSecretKey::gen_relinkey(const PhantomContext &context) {
+PhantomRelinKey PhantomSecretKey::gen_relinkey(const PhantomContext &context)
+{
     PhantomRelinKey relin_key;
 
     const auto &s = phantom::util::global_variables::default_stream->get_stream();
@@ -498,7 +541,8 @@ PhantomRelinKey PhantomSecretKey::gen_relinkey(const PhantomContext &context) {
     auto coeff_mod_size = key_modulus.size();
 
     size_t max_power = 2;
-    if (max_power > sk_max_power_) {
+    if (max_power > sk_max_power_)
+    {
         compute_secret_key_array(context, max_power, s);
     }
 
@@ -510,7 +554,8 @@ PhantomRelinKey PhantomSecretKey::gen_relinkey(const PhantomContext &context) {
     return relin_key;
 }
 
-PhantomGaloisKey PhantomSecretKey::create_galois_keys(const PhantomContext &context) const {
+PhantomGaloisKey PhantomSecretKey::create_galois_keys(const PhantomContext &context) const
+{
     PhantomGaloisKey galois_keys;
 
     // Extract encryption parameters.
@@ -532,11 +577,13 @@ PhantomGaloisKey PhantomSecretKey::create_galois_keys(const PhantomContext &cont
     auto relin_key_num = galois_elts.size();
     galois_keys.relin_keys_.resize(relin_key_num);
 
-    for (size_t galois_elt_idx{0}; galois_elt_idx < relin_key_num; galois_elt_idx++) {
+    for (size_t galois_elt_idx{0}; galois_elt_idx < relin_key_num; galois_elt_idx++)
+    {
         auto galois_elt = galois_elts[galois_elt_idx];
 
         // Verify coprime conditions.
-        if (!(galois_elt & 1) || (galois_elt >= poly_degree << 1)) {
+        if (!(galois_elt & 1) || (galois_elt >= poly_degree << 1))
+        {
             throw invalid_argument("Galois element is not valid");
         }
         // Rotate secret key for each coeff_modulus
@@ -551,25 +598,27 @@ PhantomGaloisKey PhantomSecretKey::create_galois_keys(const PhantomContext &cont
     return galois_keys;
 }
 
-PhantomGaloisKey PhantomSecretKey::create_galois_keys_from_elts(PhantomContext &context, const std::vector<uint32_t> &elts) const {
+PhantomGaloisKey PhantomSecretKey::create_galois_keys_from_elts(PhantomContext &context, const std::vector<uint32_t> &elts) const
+{
     const auto &s = phantom::util::global_variables::default_stream->get_stream();
 
     int log_n = phantom::arith::get_power_of_two(context.poly_degree_);
     bool is_bfv = (context.first_context_data().parms().scheme() == phantom::scheme_type::bfv);
-    
+
     context.key_galois_tool_.reset();
     context.key_galois_tool_ = std::make_unique<PhantomGaloisTool>(elts, log_n, s, is_bfv);
 
     return create_galois_keys(context);
 }
 
-PhantomGaloisKey PhantomSecretKey::create_galois_keys_from_steps(PhantomContext &context, const std::vector<int> &steps) const {
+PhantomGaloisKey PhantomSecretKey::create_galois_keys_from_steps(PhantomContext &context, const std::vector<int> &steps) const
+{
     const auto &s = phantom::util::global_variables::default_stream->get_stream();
-    
+
     auto elts = context.key_galois_tool_->get_elts_from_steps(steps);
     int log_n = phantom::arith::get_power_of_two(context.poly_degree_);
     bool is_bfv = (context.first_context_data().parms().scheme() == phantom::scheme_type::bfv);
-    
+
     context.key_galois_tool_.reset();
     context.key_galois_tool_ = std::make_unique<PhantomGaloisTool>(elts, log_n, s, is_bfv);
 
@@ -578,7 +627,8 @@ PhantomGaloisKey PhantomSecretKey::create_galois_keys_from_steps(PhantomContext 
 
 void PhantomSecretKey::encrypt_symmetric(const PhantomContext &context, const PhantomPlaintext &plain,
                                          PhantomCiphertext &cipher,
-                                         const phantom::util::cuda_stream_wrapper &stream_wrapper) const {
+                                         const phantom::util::cuda_stream_wrapper &stream_wrapper) const
+{
     auto &context_data = context.get_context_data(0); // Use key_parm_id for obtaining scheme
     auto &parms = context_data.parms();
     auto scheme = parms.scheme();
@@ -593,12 +643,15 @@ void PhantomSecretKey::encrypt_symmetric(const PhantomContext &context, const Ph
     cipher.correction_factor_ = 1;
     cipher.noiseScaleDeg_ = 1;
 
-    if (scheme == phantom::scheme_type::bfv) {
+    if (scheme == phantom::scheme_type::bfv)
+    {
         encrypt_zero_symmetric(context, cipher, prng_seed_a.get(), context.get_first_index(), is_ntt_form, s);
         // calculate [plain * coeff / plain-modulus].
         // return [plain * coeff / plain-modulus + c0, c1]
         multiply_add_plain_with_scaling_variant(context, plain, context.get_first_index(), cipher, s);
-    } else if (scheme == phantom::scheme_type::ckks) {
+    }
+    else if (scheme == phantom::scheme_type::ckks)
+    {
         is_ntt_form = true;
         // [c0, c1] is the encrytion of 0, key idea is use the plain's chain_index to find corresponding data
         encrypt_zero_symmetric(context, cipher, prng_seed_a.get(), plain.chain_index(), is_ntt_form, s);
@@ -612,11 +665,13 @@ void PhantomSecretKey::encrypt_symmetric(const PhantomContext &context, const Ph
         // c0 = c0 + plaintext
         uint64_t gridDimGlb = poly_degree * ckks_coeff_mod_size / blockDimGlb.x;
         add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                cipher.data(), plain.data(), context.gpu_rns_tables().modulus(),
-                cipher.data(), poly_degree, ckks_coeff_mod_size);
+            cipher.data(), plain.data(), context.gpu_rns_tables().modulus(),
+            cipher.data(), poly_degree, ckks_coeff_mod_size);
 
         cipher.scale_ = plain.scale();
-    } else if (scheme == phantom::scheme_type::bgv) {
+    }
+    else if (scheme == phantom::scheme_type::bgv)
+    {
         is_ntt_form = true;
         // (c[0], c[1]) = ([-(as+te)]_q, a)
         encrypt_zero_symmetric(context, cipher, prng_seed_a.get(), context.get_first_index(), is_ntt_form, s);
@@ -629,7 +684,8 @@ void PhantomSecretKey::encrypt_symmetric(const PhantomContext &context, const Ph
 
         // c0 = c0 + plaintext
         auto plain_copy = make_cuda_auto_ptr<uint64_t>(bgv_coeff_mod_size * poly_degree, s);
-        for (size_t i = 0; i < bgv_coeff_mod_size; i++) {
+        for (size_t i = 0; i < bgv_coeff_mod_size; i++)
+        {
             cudaMemcpyAsync(plain_copy.get() + i * poly_degree, plain.data(), sizeof(uint64_t) * poly_degree,
                             cudaMemcpyDeviceToDevice, s);
         }
@@ -637,16 +693,20 @@ void PhantomSecretKey::encrypt_symmetric(const PhantomContext &context, const Ph
         nwt_2d_radix8_forward_inplace(plain_copy.get(), context.gpu_rns_tables(), bgv_coeff_mod_size, 0, s);
         uint64_t gridDimGlb = poly_degree * bgv_coeff_mod_size / blockDimGlb.x;
         add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                cipher.data(), plain_copy.get(), base_rns, cipher.data(), poly_degree,
-                bgv_coeff_mod_size);
-    } else {
+            cipher.data(), plain_copy.get(), base_rns, cipher.data(), poly_degree,
+            bgv_coeff_mod_size);
+    }
+    else
+    {
         throw std::invalid_argument("unsupported scheme.");
     }
 }
 
 void PhantomSecretKey::ckks_decrypt(const PhantomContext &context, const PhantomCiphertext &encrypted,
-                                    PhantomPlaintext &destination, const cudaStream_t &stream) {
-    if (!encrypted.is_ntt_form()) {
+                                    PhantomPlaintext &destination, const cudaStream_t &stream)
+{
+    if (!encrypted.is_ntt_form())
+    {
         throw invalid_argument("encrypted must be in NTT form");
     }
 
@@ -659,7 +719,8 @@ void PhantomSecretKey::ckks_decrypt(const PhantomContext &context, const Phantom
     auto base_rns = context.gpu_rns_tables().modulus();
     auto needed_sk_power = encrypted.size() - 1;
 
-    if (needed_sk_power > sk_max_power_) {
+    if (needed_sk_power > sk_max_power_)
+    {
         compute_secret_key_array(context, needed_sk_power, stream);
     }
 
@@ -668,13 +729,14 @@ void PhantomSecretKey::ckks_decrypt(const PhantomContext &context, const Phantom
                     cudaMemcpyDeviceToDevice, stream);
 
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
-    for (size_t i = 1; i <= needed_sk_power; i++) {
+    for (size_t i = 1; i <= needed_sk_power; i++)
+    {
         uint64_t *ci = encrypted.data() + i * coeff_mod_size * poly_degree;
         uint64_t *si = secret_key_array() + (i - 1) * coeff_modulus_size_ * poly_degree;
         // c_0 += c_j * s^{j}
         multiply_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                ci, si, destination.data(), base_rns, destination.data(),
-                poly_degree, coeff_mod_size);
+            ci, si, destination.data(), base_rns, destination.data(),
+            poly_degree, coeff_mod_size);
     }
 
     // Set destination parameters as in ciphertext
@@ -683,7 +745,8 @@ void PhantomSecretKey::ckks_decrypt(const PhantomContext &context, const Phantom
 }
 
 void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomCiphertext &encrypted,
-                                   PhantomPlaintext &destination, const cudaStream_t &stream) {
+                                   PhantomPlaintext &destination, const cudaStream_t &stream)
+{
     auto chain_index = encrypted.chain_index_;
     auto coeff_mod_size = encrypted.coeff_modulus_size_;
     auto poly_degree = encrypted.poly_modulus_degree_;
@@ -691,7 +754,8 @@ void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomC
     auto poly_num = encrypted.size_;
     auto needed_sk_power = poly_num - 1;
 
-    if (needed_sk_power > sk_max_power_) {
+    if (needed_sk_power > sk_max_power_)
+    {
         compute_secret_key_array(context, needed_sk_power, stream);
     }
 
@@ -709,7 +773,8 @@ void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomC
     auto temp = make_cuda_auto_ptr<uint64_t>(coeff_mod_size * poly_degree, stream);
 
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
-    for (size_t i = 1; i <= needed_sk_power; i++) {
+    for (size_t i = 1; i <= needed_sk_power; i++)
+    {
         uint64_t *ci = encrypted.data() + i * coeff_mod_size * poly_degree;
         uint64_t *si = secret_key_array() + (i - 1) * coeff_modulus_size_ * poly_degree;
         cudaMemcpyAsync(temp.get(), ci, coeff_mod_size * poly_degree * sizeof(uint64_t), cudaMemcpyDeviceToDevice,
@@ -718,8 +783,8 @@ void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomC
         nwt_2d_radix8_forward_inplace(temp.get(), context.gpu_rns_tables(), coeff_mod_size, 0, stream);
         // c1 = c1*s^1 + c2*s^2 + ......
         multiply_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                temp.get(), si, inner_prod.get(), base_rns,
-                inner_prod.get(), poly_degree, coeff_mod_size);
+            temp.get(), si, inner_prod.get(), base_rns,
+            inner_prod.get(), poly_degree, coeff_mod_size);
     }
 
     // change c_1 to normal form
@@ -727,21 +792,23 @@ void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomC
 
     // finally, c_0 = c_0 + c_1
     add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-            c0, inner_prod.get(), base_rns, inner_prod.get(), poly_degree, coeff_mod_size);
+        c0, inner_prod.get(), base_rns, inner_prod.get(), poly_degree, coeff_mod_size);
 
     auto mul_tech = context.mul_tech();
 
-    if (mul_tech == mul_tech_type::behz) {
+    if (mul_tech == mul_tech_type::behz)
+    {
         // Divide scaling variant using BEHZ FullRNS techniques
-        context.get_context_data(chain_index).gpu_rns_tool().behz_decrypt_scale_and_round(
-                inner_prod.get(), temp.get(), context.gpu_rns_tables(), coeff_mod_size,
-                poly_degree, destination.data(), stream);
-    } else if (mul_tech == mul_tech_type::hps || mul_tech == mul_tech_type::hps_overq ||
-               mul_tech == mul_tech_type::hps_overq_leveled) {
+        context.get_context_data(chain_index).gpu_rns_tool().behz_decrypt_scale_and_round(inner_prod.get(), temp.get(), context.gpu_rns_tables(), coeff_mod_size, poly_degree, destination.data(), stream);
+    }
+    else if (mul_tech == mul_tech_type::hps || mul_tech == mul_tech_type::hps_overq ||
+             mul_tech == mul_tech_type::hps_overq_leveled)
+    {
         // HPS scale and round
-        context.get_context_data(chain_index).gpu_rns_tool().hps_decrypt_scale_and_round(
-                destination.data(), inner_prod.get(), stream);
-    } else {
+        context.get_context_data(chain_index).gpu_rns_tool().hps_decrypt_scale_and_round(destination.data(), inner_prod.get(), stream);
+    }
+    else
+    {
         throw std::invalid_argument("BFV decrypt mul_tech not supported");
     }
 
@@ -750,8 +817,10 @@ void PhantomSecretKey::bfv_decrypt(const PhantomContext &context, const PhantomC
 }
 
 void PhantomSecretKey::bgv_decrypt(const PhantomContext &context, const PhantomCiphertext &encrypted,
-                                   PhantomPlaintext &destination, const cudaStream_t &stream) {
-    if (!encrypted.is_ntt_form()) {
+                                   PhantomPlaintext &destination, const cudaStream_t &stream)
+{
+    if (!encrypted.is_ntt_form())
+    {
         throw invalid_argument("encrypted must be in NTT form");
     }
 
@@ -766,7 +835,8 @@ void PhantomSecretKey::bgv_decrypt(const PhantomContext &context, const PhantomC
     auto base_rns = context.gpu_rns_tables().modulus();
     auto needed_sk_power = encrypted.size() - 1;
 
-    if (needed_sk_power > sk_max_power_) {
+    if (needed_sk_power > sk_max_power_)
+    {
         compute_secret_key_array(context, needed_sk_power, stream);
     }
 
@@ -776,13 +846,14 @@ void PhantomSecretKey::bgv_decrypt(const PhantomContext &context, const PhantomC
                     cudaMemcpyDeviceToDevice, stream);
 
     uint64_t gridDimGlb = poly_degree * coeff_mod_size / blockDimGlb.x;
-    for (size_t i = 1; i <= needed_sk_power; i++) {
+    for (size_t i = 1; i <= needed_sk_power; i++)
+    {
         uint64_t *ci = encrypted.data() + i * coeff_mod_size * poly_degree;
         uint64_t *si = secret_key_array() + (i - 1) * coeff_modulus_size_ * poly_degree;
         // c_0 += c_j * s^{j}
         multiply_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                ci, si, inner_prod.get(), base_rns, inner_prod.get(),
-                poly_degree, coeff_mod_size);
+            ci, si, inner_prod.get(), base_rns, inner_prod.get(),
+            poly_degree, coeff_mod_size);
     }
 
     nwt_2d_radix8_backward_inplace(inner_prod.get(), context.gpu_rns_tables(), coeff_mod_size, 0, stream);
@@ -792,20 +863,23 @@ void PhantomSecretKey::bgv_decrypt(const PhantomContext &context, const PhantomC
     destination.scale_ = encrypted.scale();
     rns_tool.decrypt_mod_t(destination.data(), inner_prod.get(), poly_degree, stream);
 
-    if (encrypted.correction_factor() != 1) {
+    if (encrypted.correction_factor() != 1)
+    {
         uint64_t fix = 1;
-        if (!try_invert_uint_mod(encrypted.correction_factor(), plain_modulus, fix)) {
+        if (!try_invert_uint_mod(encrypted.correction_factor(), plain_modulus, fix))
+        {
             throw logic_error("invalid correction factor");
         }
 
         gridDimGlb = poly_degree / blockDimGlb.x;
         multiply_scalar_rns_poly<<<gridDimGlb, blockDimGlb, 0, stream>>>(
-                destination.data(), fix, context.gpu_plain_tables().modulus(), destination.data(), poly_degree, 1);
+            destination.data(), fix, context.gpu_plain_tables().modulus(), destination.data(), poly_degree, 1);
     }
 }
 
 void PhantomSecretKey::decrypt(const PhantomContext &context, const PhantomCiphertext &cipher,
-                               PhantomPlaintext &plain, const phantom::util::cuda_stream_wrapper &stream_wrapper) {
+                               PhantomPlaintext &plain, const phantom::util::cuda_stream_wrapper &stream_wrapper)
+{
     auto &context_data = context.get_context_data(cipher.chain_index());
     auto &parms = context_data.parms();
     auto &coeff_modulus = parms.coeff_modulus();
@@ -825,20 +899,28 @@ void PhantomSecretKey::decrypt(const PhantomContext &context, const PhantomCiphe
     plain.poly_modulus_degree_ = poly_degree;
     plain.resize(plain.coeff_modulus_size_, plain.poly_modulus_degree_, s);
 
-    if (scheme == phantom::scheme_type::bfv) {
+    if (scheme == phantom::scheme_type::bfv)
+    {
         bfv_decrypt(context, cipher, plain, s);
-    } else if (scheme == phantom::scheme_type::ckks) {
+    }
+    else if (scheme == phantom::scheme_type::ckks)
+    {
         ckks_decrypt(context, cipher, plain, s);
-    } else if (scheme == phantom::scheme_type::bgv) {
+    }
+    else if (scheme == phantom::scheme_type::bgv)
+    {
         bgv_decrypt(context, cipher, plain, s);
-    } else {
+    }
+    else
+    {
         throw std::invalid_argument("unsupported scheme.");
     }
 }
 
 // Compute the infinity norm of poly
 static void poly_infinity_norm_coeffmod(const uint64_t *poly, size_t coeff_count, size_t coeff_uint64_count,
-                                        const uint64_t *modulus, uint64_t *result) {
+                                        const uint64_t *modulus, uint64_t *result)
+{
     // Construct negative threshold: (modulus + 1) / 2
     auto modulus_neg_threshold = std::vector<uint64_t>(coeff_uint64_count);
 
@@ -848,15 +930,20 @@ static void poly_infinity_norm_coeffmod(const uint64_t *poly, size_t coeff_count
     set_zero_uint(coeff_uint64_count, result);
     auto coeff_abs_value = std::vector<uint64_t>(coeff_uint64_count);
 
-    for (size_t i{0}; i < coeff_count; i++) {
+    for (size_t i{0}; i < coeff_count; i++)
+    {
         if (is_greater_than_or_equal_uint(poly + i * coeff_uint64_count, modulus_neg_threshold.data(),
-                                          coeff_uint64_count)) {
+                                          coeff_uint64_count))
+        {
             sub_uint(modulus, poly + i * coeff_uint64_count, coeff_uint64_count, coeff_abs_value.data());
-        } else {
+        }
+        else
+        {
             set_uint(poly + i * coeff_uint64_count, coeff_uint64_count, coeff_abs_value.data());
         }
 
-        if (is_greater_than_uint(coeff_abs_value.data(), result, coeff_uint64_count)) {
+        if (is_greater_than_uint(coeff_abs_value.data(), result, coeff_uint64_count))
+        {
             // Store the new max
             set_uint(coeff_abs_value.data(), coeff_uint64_count, result);
         }
@@ -865,7 +952,8 @@ static void poly_infinity_norm_coeffmod(const uint64_t *poly, size_t coeff_count
 
 int PhantomSecretKey::invariant_noise_budget(const PhantomContext &context,
                                              const PhantomCiphertext &cipher,
-                                             const phantom::util::cuda_stream_wrapper &stream_wrapper) {
+                                             const phantom::util::cuda_stream_wrapper &stream_wrapper)
+{
     const auto &s = stream_wrapper.get_stream();
 
     auto chain_index = cipher.chain_index();
@@ -878,7 +966,8 @@ int PhantomSecretKey::invariant_noise_budget(const PhantomContext &context,
     auto base_rns = context.gpu_rns_tables().modulus();
     auto poly_num = cipher.size_;
     auto needed_sk_power = poly_num - 1;
-    if (needed_sk_power > sk_max_power_) {
+    if (needed_sk_power > sk_max_power_)
+    {
         compute_secret_key_array(context, needed_sk_power, s);
     }
 
@@ -889,20 +978,24 @@ int PhantomSecretKey::invariant_noise_budget(const PhantomContext &context,
 
     // Compute c_0 + c_1 *s + ... + c_{count-1} * s^{count-1} mod q
     // First compute c_1 *s, ..., c_{count-1} * s^{count-1} mod q
-    for (size_t i = 1; i <= needed_sk_power; i++) {
+    for (size_t i = 1; i <= needed_sk_power; i++)
+    {
         uint64_t *ci = cipher_copy.data() + i * coeff_mod_size * poly_degree;
         uint64_t *si = secret_key_array() + (i - 1) * coeff_modulus_size_ * poly_degree;
         // Change ci to NTT form
         nwt_2d_radix8_forward_inplace(ci, context.gpu_rns_tables(), coeff_mod_size, 0, s);
         // ci * s^{i} in NTT form
-        if (i == 1) {
+        if (i == 1)
+        {
             // c1 = c1 * s^1
             multiply_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                    ci, si, base_rns, ci, poly_degree, coeff_mod_size);
-        } else {
+                ci, si, base_rns, ci, poly_degree, coeff_mod_size);
+        }
+        else
+        {
             // c1 = c1*s^1 + c2*s^2 + ......
             multiply_and_add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-                    ci, si, c1, base_rns, c1, poly_degree, coeff_mod_size);
+                ci, si, c1, base_rns, c1, poly_degree, coeff_mod_size);
         }
     }
 
@@ -910,17 +1003,17 @@ int PhantomSecretKey::invariant_noise_budget(const PhantomContext &context,
     nwt_2d_radix8_backward_inplace(c1, context.gpu_rns_tables(), coeff_mod_size, 0, s);
     // finally, c_0 = c_0 + c_1
     add_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-            c0, c1, base_rns, c0, poly_degree, coeff_mod_size);
+        c0, c1, base_rns, c0, poly_degree, coeff_mod_size);
 
     // compute c0 * plain_modulus
     multiply_scalar_rns_poly<<<gridDimGlb, blockDimGlb, 0, s>>>(
-            c0, plain_modulus.value(), base_rns, c0, poly_degree, coeff_mod_size);
+        c0, plain_modulus.value(), base_rns, c0, poly_degree, coeff_mod_size);
 
     // Copy noise_poly to Host
     std::vector<uint64_t> host_noise_poly(coeff_mod_size * poly_degree);
     cudaMemcpyAsync(host_noise_poly.data(), c0, coeff_mod_size * poly_degree * sizeof(uint64_t), cudaMemcpyDeviceToHost,
                     s);
-    
+
     // explicit stream synchronize to avoid error
     cudaStreamSynchronize(s);
 
@@ -931,7 +1024,8 @@ int PhantomSecretKey::invariant_noise_budget(const PhantomContext &context,
     // Next we compute the infinity norm mod parms.coeff_modulus()
     std::vector<uint64_t> norm(coeff_mod_size);
     std::vector<uint64_t> modulus;
-    for (size_t idx{0}; idx < coeff_mod_size; idx++) {
+    for (size_t idx{0}; idx < coeff_mod_size; idx++)
+    {
         modulus.push_back(parms.coeff_modulus().at(idx).value());
     }
     auto total_coeff_modulus = context_data.total_coeff_modulus();
