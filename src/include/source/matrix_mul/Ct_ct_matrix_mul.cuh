@@ -10,8 +10,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
                                                       vector<PhantomCiphertext> &enc_W, PhantomGaloisKey &RotK, PhantomRelinKey &relin_keys,
                                                       PhantomContext &context, int col_X, int row_X, int col_W, int row_W, int num_batch)
 {
-
-  // vector<PhantomCiphertext> output(row_X);
   vector<PhantomCiphertext> output(static_cast<size_t>(row_X));
   double scale = enc_X[0].scale();
 
@@ -41,7 +39,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   // cudaEventCreate(&ev_start);
   // cudaEventCreate(&ev_stop);
 
-  // 可选：单独的计时流，避免用默认流 0
   // cudaStream_t timing_stream = nullptr;
   // cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
 
@@ -87,11 +84,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
       for (int j = 0; j < col_X; ++j)
       {
         // copy_w[j] = enc_W[j];
-        copy_w[j] = deep_copy_cipher(enc_W[j], context, stream);
+        copy_w[j] = deep_copy_cipher(enc_W[j], context, stream); // distributed ciphertexts to corresponding stream
         if (i > 0)
         {
           evaluator_local.rotate_vector_inplace(copy_w[j], i * num_batch, RotK, stream);
-          // cudaStreamSynchronize(stream.get_stream());
+
+          // non inplace version
           // PhantomCiphertext rotated;
           // evaluator_local.rotate_vector(enc_W[j], i * num_batch, RotK, rotated);
           // copy_w[j] = std::move(rotated);
@@ -158,11 +156,10 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
                                                        vector<PhantomCiphertext> &enc_W, PhantomGaloisKey &RotK, PhantomRelinKey &relin_keys,
                                                        PhantomContext &context, int col_X, int row_X, int col_W, int row_W, int num_batch)
 {
-
   // X: diag encoding
   // W: column encoding
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 32));
+  const int nthreads = std::max(1, std::min(max_threads, col_X));
 
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {

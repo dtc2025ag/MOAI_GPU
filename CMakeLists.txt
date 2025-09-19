@@ -90,14 +90,10 @@ file(GLOB_RECURSE MOAI_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
 
 add_executable(test ${MOAI_CUDA_SOURCE_FILES})
 
-# 1) 找到 OpenMP
 find_package(OpenMP REQUIRED)
 
-# 2) C++ 源文件：链接 OpenMP
 target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 
-# 3) CUDA 源文件（.cu）：让 nvcc 的 host 编译阶段也开启 OpenMP
-#    等价于给 nvcc 添加: -Xcompiler -fopenmp
 target_compile_options(test PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>
 )
