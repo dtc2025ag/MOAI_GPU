@@ -217,12 +217,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaStreamCreateWithFlags(&timing_stream_rot, cudaStreamNonBlocking);
 
   // 确保所有线程都已经设置好 wait 之后再开枪
-// #pragma omp barrier
-// #pragma omp single
-//   {
-//     // 起跑枪：现在才开始计时，预处理不包含
-//     cudaEventRecord(ev_start_rot, timing_stream_rot ? timing_stream_rot : 0);
-//   }
+  // #pragma omp barrier
+  // #pragma omp single
+  //   {
+  //     // 起跑枪：现在才开始计时，预处理不包含
+  //     cudaEventRecord(ev_start_rot, timing_stream_rot ? timing_stream_rot : 0);
+  //   }
 
   // #pragma omp parallel for
 #pragma omp parallel num_threads(nthreads)
@@ -318,12 +318,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     // cudaStreamWaitEvent(stream.get_stream(), ev_start_bsgs, 0);
 
     // 确保所有线程都已经设置好 wait 之后再开枪
-// #pragma omp barrier
-// #pragma omp single
-//     {
-//       // 起跑枪：现在才开始计时，预处理不包含
-//       cudaEventRecord(ev_start_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
-//     }
+    // #pragma omp barrier
+    // #pragma omp single
+    //     {
+    //       // 起跑枪：现在才开始计时，预处理不包含
+    //       cudaEventRecord(ev_start_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
+    //     }
 
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)

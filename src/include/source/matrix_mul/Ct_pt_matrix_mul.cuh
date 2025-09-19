@@ -136,7 +136,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 
   // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
+  const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //
@@ -479,7 +479,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   // #pragma omp parallel for
   // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
+  const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //
@@ -653,7 +653,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
   // #pragma omp parallel for
   // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
+  const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   // —— 准备每线程一个流（拥有型 wrapper） —— //

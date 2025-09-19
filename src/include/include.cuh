@@ -183,6 +183,7 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
 #include "test/non_linear_func/test_layernorm.cuh"
 #include "test/bootstrapping/bootstrapping.cuh"
 #include "test/non_linear_func/test_softmax.cuh"
+#include "test/non_linear_func/test_BPmax_BatchLN.cuh"
 #include "test/test_single_layer.cuh"
 
 #endif

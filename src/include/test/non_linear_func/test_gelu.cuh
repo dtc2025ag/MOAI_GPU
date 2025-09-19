@@ -28,7 +28,7 @@ void gelu_test()
     // Calculation required
     int boot_level = 0; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
 
-    int remaining_level = 8;
+    int remaining_level = 10;
     int total_level = remaining_level + boot_level;
 
     vector<int> coeff_bit_vec;
@@ -97,7 +97,7 @@ void gelu_test()
     // construct input
     int num_X = 256;
     int num_row = 128;
-    int num_col = 3072;
+    int num_col = 64;
     cout << "Number of matrices in one batch = " << num_X << endl;
     vector<vector<vector<double>>> input_x(num_X, vector<vector<double>>(num_row, vector<double>(num_col, 0)));
     for (int i = 0; i < num_X; ++i)
@@ -153,15 +153,14 @@ void gelu_test()
     */
 
     const int max_threads = omp_get_max_threads();
-    const int nthreads = std::max(1, std::min(max_threads, 4));
+    const int nthreads = std::max(1, std::min(max_threads, 102));
 
-    // —— 准备每线程一个流（拥有型 wrapper） —— //
     if (stream_pool.size() < static_cast<size_t>(nthreads))
     {
         stream_pool.reserve(nthreads);
         for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
         {
-            stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+            stream_pool.emplace_back();
         }
     }
     if (nthreads == 1)
@@ -179,7 +178,7 @@ void gelu_test()
 #pragma omp parallel num_threads(nthreads)
     {
         const int tid = omp_get_thread_num();
-        auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+        auto &stream = stream_pool[tid];
 #pragma omp for schedule(static)
         for (int i = 0; i < num_col; ++i)
         {
@@ -191,7 +190,7 @@ void gelu_test()
     gettimeofday(&tend1, NULL);
     double gelu_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
     cout << "gelu time = " << gelu_time << endl;
-
+    cout << "gelu time (amortized) = " << gelu_time / num_col << endl;
     cout << "Modulus chain index for gelu: " << context.get_context_data(output[0].params_id()).chain_depth() << endl;
     append_csv_row("../results.csv", "gelu_v2", gelu_time);
     // decrypt

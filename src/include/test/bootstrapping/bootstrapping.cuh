@@ -42,7 +42,7 @@ void bootstrapping_test()
 
   int secret_key_hamming_weight = 192;
 
-  int remaining_level = 19;
+  int remaining_level = 10;
   int boot_level = 14; // >= subsum 1 + coefftoslot 2 + ModReduction 9 + slottocoeff 2
   int total_level = remaining_level + boot_level;
 
