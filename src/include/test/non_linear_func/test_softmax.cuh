@@ -113,13 +113,14 @@ void softmax_test()
 
     EncryptionParameters parms(scheme_type::ckks);
 
-    size_t poly_modulus_degree = 32768;
+    size_t poly_modulus_degree = 65536;
     parms.set_poly_modulus_degree(poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {51, 46, 46, 46, 46,
-                                                                       46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 58}));
-    long sparse_slots = 16384;
+    // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {51, 46, 46, 46, 46,
+    //                                                                    46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 58}));
+    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {58, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 58})); // NEXUS params
+    long sparse_slots = 32768;
     parms.set_sparse_slots(sparse_slots);
-    double scale = pow(2.0, 46);
+    double scale = pow(2.0, 40);
 
     // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40,40, 40,
     //     40,40,40,40,40,40,40,40,40, 40,40,40,40,40,40,40,40,60}));
@@ -153,7 +154,7 @@ void softmax_test()
     // construct input
     int num_X = 128;
     int num_row = 128;
-    int num_col = 64;
+    int num_col = sparse_slots / 128;
     cout << "Number of matrices in one batch = " << num_X << endl;
     vector<vector<vector<double>>> input_x(num_X, vector<vector<double>>(num_row, vector<double>(num_col, 0)));
     for (int i = 0; i < num_X; ++i)

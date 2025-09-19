@@ -13,7 +13,7 @@ void ct_pt_matrix_mul_test()
     size_t poly_modulus_degree = 65536;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree,
-                                                 {60, 40, 60}));
+                                                 {60, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 60}));
     //{60, 40, 40, 60}));
     long sparse_slots = 32768;
     parms.set_sparse_slots(sparse_slots);
@@ -43,7 +43,7 @@ void ct_pt_matrix_mul_test()
     // construct input
     int num_X = 256;
     int num_row = 128;
-    int num_col = 3072;
+    int num_col = 768;
     cout << "Number of matrices in one batch = " << num_X << endl;
     vector<vector<vector<double>>> input_x(num_X, vector<vector<double>>(num_row, vector<double>(num_col, 0)));
     for (int i = 0; i < num_X; ++i)
@@ -96,7 +96,7 @@ void ct_pt_matrix_mul_test()
     */
 
     // construct W
-    int col_W = 768;
+    int col_W = 64;
     vector<vector<double>> W(num_col, vector<double>(col_W, 1.0 / 128.0));
     cout << "Matrix W size = " << num_col << " * " << col_W << endl;
 

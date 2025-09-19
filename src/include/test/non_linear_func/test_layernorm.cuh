@@ -91,6 +91,8 @@ void layernorm_test()
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 40, 40,
                                                                        40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 60}));
+
+    // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {58, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 58})); // NEXUS params
     long sparse_slots = 32768;
     parms.set_sparse_slots(sparse_slots);
     double scale = pow(2.0, 40);

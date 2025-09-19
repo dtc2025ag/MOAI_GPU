@@ -7,6 +7,292 @@ using namespace phantom::util;
 using namespace phantom::arith;
 using namespace moai;
 
+#include <omp.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+using std::vector;
+
+inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
+    vector<PhantomCiphertext> &enc_X,
+    const vector<vector<double>> &W,
+    int col_X, int col_W, int row_W,
+    PhantomContext &context)
+{
+  vector<PhantomCiphertext> output(static_cast<size_t>(col_W));
+
+  // —— 基本检查 —— //
+  if (enc_X.empty() || W.empty() || col_W <= 0 || row_W <= 0)
+  {
+    std::cout << "ERROR: empty inputs or bad dimensions.\n";
+  }
+  if (static_cast<int>(enc_X.size()) < row_W)
+  {
+    std::cout << "ERROR: enc_X size < row_W.\n";
+    return output;
+  }
+  if (static_cast<int>(W.size()) < row_W)
+  {
+    std::cout << "ERROR: W rows < row_W.\n";
+    return output;
+  }
+  for (int r = 0; r < row_W; ++r)
+  {
+    if (static_cast<int>(W[r].size()) < col_W)
+    {
+      std::cout << "ERROR: W row " << r << " has fewer than col_W columns.\n";
+      return output;
+    }
+  }
+  if (col_X != row_W)
+  {
+    std::cout << "ERROR: bad dimensions of X or W.\n";
+    return output;
+  }
+  // cudaSetDevice(1);
+  const double scale = enc_X[0].scale();
+
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, 32));
+  // std::cout << "nums of thread: " << nthreads << std::endl;
+
+  if (stream_pool.size() < static_cast<size_t>(nthreads))
+  {
+    stream_pool.reserve(nthreads);
+    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+    {
+      stream_pool.emplace_back();
+    }
+  }
+  if (nthreads == 1)
+  {
+    stream_pool[0] = *phantom::util::global_variables::default_stream;
+  }
+
+  vector<double> time(col_W, 0.0);
+
+#pragma omp parallel num_threads(nthreads)
+  {
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid];
+    // phantom::util::cuda_stream_wrapper stream;
+    // if (nthreads == 1){
+    //   stream = *phantom::util::global_variables::default_stream;
+    // } else {
+    //   stream = stream_pool[tid];
+    // }
+
+    chrono::high_resolution_clock::time_point start, end;
+    double elapsed;
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < col_W; ++i)
+    {
+
+      // acc = enc_X[0] * W[0][i]
+      PhantomPlaintext ecd_w_0_i;
+      // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+      encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
+      bridge_to_default(stream); // bridge to default stream after each encode
+
+      PhantomCiphertext acc;
+      start = chrono::high_resolution_clock::now();
+      evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, acc);
+      end = chrono::high_resolution_clock::now();
+      elapsed = duration_cast<duration<double>>(end - start).count();
+      // cout << "[DEBUG] time: " << elapsed << endl;
+      time[i] += elapsed;
+
+      for (int j = 1; j < row_W; ++j)
+      {
+        PhantomPlaintext ecd_w_j_i;
+        // encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+        encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
+        bridge_to_default(stream); // bridge to default stream after each encode
+
+        PhantomCiphertext tmp;
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, tmp);
+
+        evaluator_local.add_inplace(acc, tmp);
+        end = chrono::high_resolution_clock::now();
+
+        elapsed = duration_cast<duration<double>>(end - start).count();
+
+        time[i] += elapsed;
+      }
+
+      start = chrono::high_resolution_clock::now();
+      evaluator_local.rescale_to_next_inplace(acc, stream);
+      acc.scale() = scale;
+
+      end = chrono::high_resolution_clock::now();
+      elapsed = duration_cast<duration<double>>(end - start).count();
+      // cout << "[DEBUG] time: " << elapsed << endl;
+      time[i] += elapsed;
+
+      output[static_cast<size_t>(i)] = std::move(acc);
+    }
+    cudaStreamSynchronize(stream.get_stream());
+  }
+
+  // double total = 0.0;
+  // for (double t : time){
+  //   total += t;
+  // }
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
+
+  // cudaDeviceSynchronize();
+  // stream_pool.clear();
+
+  return output;
+}
+
+// single thread version
+inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_single(
+    vector<PhantomCiphertext> &enc_X,
+    const vector<vector<double>> &W,
+    int col_X, int col_W, int row_W,
+    PhantomContext &context)
+{
+  vector<PhantomCiphertext> output(static_cast<size_t>(col_W));
+
+  if (enc_X.empty() || W.empty() || col_W <= 0 || row_W <= 0)
+  {
+    std::cout << "ERROR: empty inputs or bad dimensions.\n";
+  }
+  if (static_cast<int>(enc_X.size()) < row_W)
+  {
+    std::cout << "ERROR: enc_X size < row_W.\n";
+    return output;
+  }
+  if (static_cast<int>(W.size()) < row_W)
+  {
+    std::cout << "ERROR: W rows < row_W.\n";
+    return output;
+  }
+  for (int r = 0; r < row_W; ++r)
+  {
+    if (static_cast<int>(W[r].size()) < col_W)
+    {
+      std::cout << "ERROR: W row " << r << " has fewer than col_W columns.\n";
+      return output;
+    }
+  }
+  if (col_X != row_W)
+  {
+    std::cout << "ERROR: bad dimensions of X or W.\n";
+    return output;
+  }
+  // cudaSetDevice(1);
+  const double scale = enc_X[0].scale();
+
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, 1));
+  // std::cout << "nums of thread: " << nthreads << std::endl;
+
+  // if (stream_pool.size() < static_cast<size_t>(nthreads))
+  // {
+  //   stream_pool.reserve(nthreads);
+  //   for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+  //   {
+  //     stream_pool.emplace_back();
+  //   }
+  // }
+  // if (nthreads == 1)
+  // {
+  //   stream_pool[0] = *phantom::util::global_variables::default_stream;
+  // }
+
+  vector<double> time(col_W, 0.0);
+
+#pragma omp parallel num_threads(nthreads)
+  {
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+    auto &stream = stream_pool[tid];
+    // phantom::util::cuda_stream_wrapper stream;
+    // if (nthreads == 1){
+    //   stream = *phantom::util::global_variables::default_stream;
+    // } else {
+    //   stream = stream_pool[tid];
+    // }
+
+    chrono::high_resolution_clock::time_point start, end;
+    double elapsed;
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < col_W; ++i)
+    {
+
+      // acc = enc_X[0] * W[0][i]
+      PhantomPlaintext ecd_w_0_i;
+      // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+      encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+      bridge_to_default(stream); // bridge to default stream after each encode
+
+      PhantomCiphertext acc;
+      start = chrono::high_resolution_clock::now();
+      evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, acc);
+      end = chrono::high_resolution_clock::now();
+      elapsed = duration_cast<duration<double>>(end - start).count();
+      // cout << "[DEBUG] time: " << elapsed << endl;
+      time[i] += elapsed;
+
+      for (int j = 1; j < row_W; ++j)
+      {
+        PhantomPlaintext ecd_w_j_i;
+        // encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+        encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+        // bridge_to_default(stream); // bridge to default stream after each encode
+
+        PhantomCiphertext tmp;
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, tmp);
+        evaluator_local.add_inplace(acc, tmp);
+        end = chrono::high_resolution_clock::now();
+
+        elapsed = duration_cast<duration<double>>(end - start).count();
+
+        time[i] += elapsed;
+      }
+
+      start = chrono::high_resolution_clock::now();
+      evaluator_local.rescale_to_next_inplace(acc);
+      acc.scale() = scale;
+
+      end = chrono::high_resolution_clock::now();
+      elapsed = duration_cast<duration<double>>(end - start).count();
+      // cout << "[DEBUG] time: " << elapsed << endl;
+      time[i] += elapsed;
+
+      output[static_cast<size_t>(i)] = std::move(acc);
+    }
+    cudaStreamSynchronize(stream.get_stream());
+  }
+
+  // double total = 0.0;
+  // for (double t : time){
+  //   total += t;
+  // }
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
+
+  // cudaDeviceSynchronize();
+  // stream_pool.clear();
+
+  return output;
+}
+
 // vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(vector<PhantomCiphertext> & enc_X,
 //   vector<vector<double>> & W, int col_X, int col_W, int row_W,
 //   PhantomContext& context){
@@ -82,157 +368,6 @@ using namespace moai;
 //   return output;
 
 // }
-
-#include <omp.h>
-#include <algorithm>
-#include <iostream>
-#include <vector>
-
-// 假定以下类型/接口已在你的工程里声明：
-// PhantomContext, PhantomCiphertext, PhantomPlaintext,
-// PhantomCKKSEncoder, Encoder, Evaluator
-
-// using phantom::util::cuda_stream_wrapper;
-using std::vector;
-
-inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
-    vector<PhantomCiphertext> &enc_X, 
-    const vector<vector<double>> &W,  
-    int col_X, int col_W, int row_W,
-    PhantomContext &context)
-{
-  vector<PhantomCiphertext> output(static_cast<size_t>(col_W));
-
-  // —— 基本检查 —— //
-  if (enc_X.empty() || W.empty() || col_W <= 0 || row_W <= 0)
-  {
-    std::cout << "ERROR: empty inputs or bad dimensions.\n";
-  }
-  if (static_cast<int>(enc_X.size()) < row_W)
-  {
-    std::cout << "ERROR: enc_X size < row_W.\n";
-    return output;
-  }
-  if (static_cast<int>(W.size()) < row_W)
-  {
-    std::cout << "ERROR: W rows < row_W.\n";
-    return output;
-  }
-  for (int r = 0; r < row_W; ++r)
-  {
-    if (static_cast<int>(W[r].size()) < col_W)
-    {
-      std::cout << "ERROR: W row " << r << " has fewer than col_W columns.\n";
-      return output;
-    }
-  }
-  if (col_X != row_W)
-  {
-    std::cout << "ERROR: bad dimensions of X or W.\n";
-    return output;
-  }
-  // cudaSetDevice(1);
-  const double scale = enc_X[0].scale();
-
-  const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
-  // std::cout << "nums of thread: " << nthreads << std::endl;
-
-
-  if (stream_pool.size() < static_cast<size_t>(nthreads))
-    {
-      stream_pool.reserve(nthreads);
-      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-      {
-        stream_pool.emplace_back();
-      }
-    }
-
-  vector<double> time(col_W, 0.0);
-
-
-#pragma omp parallel num_threads(nthreads)
-  {
-    // cudaSetDevice(1);
-    PhantomCKKSEncoder phantom_encoder_local(context);
-    moai::Encoder encoder_local(&context, &phantom_encoder_local);
-    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
-
-    const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
-    // phantom::util::cuda_stream_wrapper stream;
-    // if (nthreads == 1){
-    //   stream = *phantom::util::global_variables::default_stream;
-    // } else {
-    //   stream = stream_pool[tid];
-    // }
-
-    chrono::high_resolution_clock::time_point start, end;
-    double elapsed;
-
-#pragma omp for schedule(static)
-    for (int i = 0; i < col_W; ++i)
-    {
-
-      // acc = enc_X[0] * W[0][i]
-      PhantomPlaintext ecd_w_0_i;
-      // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
-      encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
-      bridge_to_default(stream); // bridge to default stream after each encode
-
-      PhantomCiphertext acc;
-      start = chrono::high_resolution_clock::now();
-      evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, acc);
-      end = chrono::high_resolution_clock::now();
-      elapsed = duration_cast<duration<double>>(end - start).count();
-      // cout << "[DEBUG] time: " << elapsed << endl;
-      time[i] += elapsed;
-
-
-      for (int j = 1; j < row_W; ++j)
-      {
-        PhantomPlaintext ecd_w_j_i;
-        // encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
-        encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
-        bridge_to_default(stream); // bridge to default stream after each encode
-
-        PhantomCiphertext tmp;
-        start = chrono::high_resolution_clock::now();
-        evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, tmp);
-
-        evaluator_local.add_inplace(acc, tmp);
-        end = chrono::high_resolution_clock::now();
-
-        elapsed = duration_cast<duration<double>>(end - start).count();
-
-        time[i] += elapsed;
-      }
-
-      start = chrono::high_resolution_clock::now();
-      evaluator_local.rescale_to_next_inplace(acc, stream);
-      acc.scale() = scale;
-
-      end = chrono::high_resolution_clock::now();
-      elapsed = duration_cast<duration<double>>(end - start).count();
-      // cout << "[DEBUG] time: " << elapsed << endl;
-      time[i] += elapsed;
-
-      output[static_cast<size_t>(i)] = std::move(acc);
-    }
-    cudaStreamSynchronize(stream.get_stream());
-  }
-
-  // double total = 0.0;
-  // for (double t : time){
-  //   total += t;
-  // }
-  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
-
-  // cudaDeviceSynchronize();
-  // stream_pool.clear();
-
-  return output;
-}
 
 // vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
 //                                            vector<vector<PhantomPlaintext>> &W, int col_X, int col_W, int row_W,
@@ -312,7 +447,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); 
+      stream_pool.emplace_back();
     }
   }
   if (nthreads == 1)
@@ -342,7 +477,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
 
     // std::vector<PhantomCiphertext> X_local(row_W);
     // for (int j = 0; j < row_W; ++j)
@@ -365,7 +500,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     for (int i = 0; i < col_W; ++i)
     {
       // PhantomCiphertext x0 = deep_copy_cipher(enc_X[0], context, stream);
-      // PhantomPlaintext p0 = W[0][i];                                      
+      // PhantomPlaintext p0 = W[0][i];
       PhantomCiphertext acc, temp;
       // encode w[0][i]
       // Plaintext ecd_w_0_i;
@@ -381,8 +516,8 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
 
       for (int j = 1; j < row_W; ++j)
       {
-        // PhantomCiphertext xj = deep_copy_cipher(enc_X[j], context, stream); 
-        // PhantomPlaintext pj = W[j][i];                                     
+        // PhantomCiphertext xj = deep_copy_cipher(enc_X[j], context, stream);
+        // PhantomPlaintext pj = W[j][i];
         // encode w[j][i]
         // Plaintext ecd_w_j_i;
         // encoder.encode(W[j][i], scale, ecd_w_j_i);
@@ -459,17 +594,17 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
 
   // #pragma omp parallel for
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
+  const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   if (stream_pool.size() < static_cast<size_t>(nthreads))
+  {
+    stream_pool.reserve(nthreads);
+    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.reserve(nthreads);
-      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-      {
-        stream_pool.emplace_back(); 
-      }
+      stream_pool.emplace_back();
     }
+  }
 
   vector<double> time(128, 0.0);
 #pragma omp parallel num_threads(nthreads)
@@ -479,7 +614,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
@@ -631,17 +766,17 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
 
   // #pragma omp parallel for
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 4));
+  const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
   if (stream_pool.size() < static_cast<size_t>(nthreads))
+  {
+    stream_pool.reserve(nthreads);
+    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.reserve(nthreads);
-      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-      {
-        stream_pool.emplace_back();
-      }
+      stream_pool.emplace_back();
     }
+  }
 
   vector<double> time(128, 0.0);
 
@@ -653,7 +788,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;

@@ -10,8 +10,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
                                                       vector<PhantomCiphertext> &enc_W, PhantomGaloisKey &RotK, PhantomRelinKey &relin_keys,
                                                       PhantomContext &context, int col_X, int row_X, int col_W, int row_W, int num_batch)
 {
-
-  // vector<PhantomCiphertext> output(row_X);
   vector<PhantomCiphertext> output(static_cast<size_t>(row_X));
   double scale = enc_X[0].scale();
 
@@ -24,13 +22,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, row_X));
 
-
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); 
+      stream_pool.emplace_back();
     }
   }
   if (nthreads == 1)
@@ -42,7 +39,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   // cudaEventCreate(&ev_start);
   // cudaEventCreate(&ev_stop);
 
-  // 可选：单独的计时流，避免用默认流 0
   // cudaStream_t timing_stream = nullptr;
   // cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
 
@@ -59,7 +55,7 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
 
     // std::vector<PhantomCiphertext> X_local(static_cast<size_t>(col_X));
     // for (int j = 0; j < col_X; ++j)
@@ -88,11 +84,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
       for (int j = 0; j < col_X; ++j)
       {
         // copy_w[j] = enc_W[j];
-        copy_w[j] = deep_copy_cipher(enc_W[j], context, stream);
+        copy_w[j] = deep_copy_cipher(enc_W[j], context, stream); // distributed ciphertexts to corresponding stream
         if (i > 0)
         {
           evaluator_local.rotate_vector_inplace(copy_w[j], i * num_batch, RotK, stream);
-          // cudaStreamSynchronize(stream.get_stream()); 
+
+          // non inplace version
           // PhantomCiphertext rotated;
           // evaluator_local.rotate_vector(enc_W[j], i * num_batch, RotK, rotated);
           // copy_w[j] = std::move(rotated);
@@ -159,11 +156,10 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
                                                        vector<PhantomCiphertext> &enc_W, PhantomGaloisKey &RotK, PhantomRelinKey &relin_keys,
                                                        PhantomContext &context, int col_X, int row_X, int col_W, int row_W, int num_batch)
 {
-
   // X: diag encoding
   // W: column encoding
   const int max_threads = omp_get_max_threads();
-  const int nthreads = std::max(1, std::min(max_threads, 32));
+  const int nthreads = std::max(1, std::min(max_threads, col_X));
 
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
@@ -208,12 +204,11 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaStream_t timing_stream_rot = nullptr;
   // cudaStreamCreateWithFlags(&timing_stream_rot, cudaStreamNonBlocking);
 
-
-// #pragma omp barrier
-// #pragma omp single
-//   {
-//     cudaEventRecord(ev_start_rot, timing_stream_rot ? timing_stream_rot : 0);
-//   }
+  // #pragma omp barrier
+  // #pragma omp single
+  //   {
+  //     cudaEventRecord(ev_start_rot, timing_stream_rot ? timing_stream_rot : 0);
+  //   }
 
   // #pragma omp parallel for
 #pragma omp parallel num_threads(nthreads)
@@ -224,7 +219,7 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
 
     // cudaStreamWaitEvent(stream.get_stream(), ev_start_rot, 0);
 
@@ -299,16 +294,15 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; 
+    auto &stream = stream_pool[tid];
 
     // cudaStreamWaitEvent(stream.get_stream(), ev_start_bsgs, 0);
 
-
-// #pragma omp barrier
-// #pragma omp single
-//     {
-//       cudaEventRecord(ev_start_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
-//     }
+    // #pragma omp barrier
+    // #pragma omp single
+    //     {
+    //       cudaEventRecord(ev_start_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
+    //     }
 
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)

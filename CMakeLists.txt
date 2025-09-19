@@ -70,6 +70,7 @@ file(GLOB_RECURSE MOAI_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
   "src/include/test/non_linear_func/test_layernorm.cuh"
   "src/include/test/bootstrapping/bootstrapping.cuh"
   "src/include/test/non_linear_func/test_softmax.cuh"
+  "src/include/test/non_linear_func/test_BPmax_BatchLN.cuh"
   "src/include/test/test_single_layer.cuh"
   "src/include/source/utils.cuh"
   "src/include/source/utils_moai.cuh"

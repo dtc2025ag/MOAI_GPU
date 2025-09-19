@@ -14,7 +14,7 @@ void ct_ct_matrix_mul_test()
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree,
                                                  //{60, 40, 40,40, 40,40,40,40,40,40,40,40,40,40, 40,40,40,40,60}));
-                                                 {60, 40, 40, 40, 60}));
+                                                 {60, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 60}));
     long sparse_slots = 32768;
     parms.set_sparse_slots(sparse_slots);
     double scale = pow(2.0, 40);
