@@ -442,7 +442,6 @@ namespace moai
       ct.set_ntt_form(true);
     }
 
-    // 常量乘/加（会用到 Encoder）
     inline void multiply_const(const PhantomCiphertext &ct, double value, PhantomCiphertext &dest,
                                const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {

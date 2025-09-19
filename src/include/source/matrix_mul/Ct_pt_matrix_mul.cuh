@@ -209,7 +209,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
       }
 
       start = chrono::high_resolution_clock::now();
-      // 是否 rescale 取决于你的算术设计；这里保持和你原逻辑一致
       evaluator_local.rescale_to_next_inplace(acc, stream);
       acc.scale() = scale;
 
@@ -303,18 +302,17 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     return output;
   }
 
-  // 线程数：不超过列数（避免空转）
+
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, col_W));
   // // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.emplace_back(); 
     }
   }
   if (nthreads == 1)
@@ -326,7 +324,6 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
   cudaEventCreate(&ev_start);
   cudaEventCreate(&ev_stop);
 
-  // 可选：单独的计时流，避免用默认流 0
   cudaStream_t timing_stream = nullptr;
   cudaStreamCreateWithFlags(&timing_stream, cudaStreamNonBlocking);
   // CKKSEncoder encoder(seal_context);
@@ -461,7 +458,6 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   int col_W_t = col_W / 128;
 
   // #pragma omp parallel for
-  // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
@@ -634,7 +630,6 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
   // cout <<col_W_t<<endl;
 
   // #pragma omp parallel for
-  // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 4));
   // std::cout << "nums of thread: " << nthreads << std::endl;
