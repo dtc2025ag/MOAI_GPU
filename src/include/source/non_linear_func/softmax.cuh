@@ -205,13 +205,12 @@ vector<PhantomCiphertext> softmax(vector<PhantomCiphertext> &enc_X, vector<int> 
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, num));
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.emplace_back(); 
     }
   }
   if (nthreads == 1)
@@ -227,7 +226,7 @@ vector<PhantomCiphertext> softmax(vector<PhantomCiphertext> &enc_X, vector<int> 
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
 
 #pragma omp for schedule(static)
     for (int i = 0; i < num; ++i)
@@ -579,13 +578,12 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> &enc_X, vector<
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, num));
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.emplace_back();
     }
   }
   if (nthreads == 1)
@@ -601,7 +599,7 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> &enc_X, vector<
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
 #pragma omp for schedule(static)
     for (int i = 0; i < num; ++i)
@@ -792,7 +790,7 @@ vector<PhantomCiphertext> softmax_boot(vector<PhantomCiphertext> &enc_X, vector<
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
 #pragma omp for schedule(static)
     for (int i = 0; i < num; ++i)

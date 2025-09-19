@@ -7,7 +7,7 @@ if (UNIX)
   set(CMAKE_CUDA_COMPILER "/usr/local/cuda-11.8/bin/nvcc")
 endif()
 
-project(NEXUS-CUDA LANGUAGES CXX CUDA)
+project(MOAI-GPU LANGUAGES CXX CUDA)
 
 # CMAKE config
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -53,70 +53,6 @@ endif()
 # PhantomFHE
 include_directories(thirdparty/phantom-fhe/include)
 
-# # NexusCUDA
-# file(GLOB_RECURSE NEXUS_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
-#   "src/main.cu"
-#   "src/gelu.cu"
-#   "src/softmax.cu"
-#   "src/layer_norm.cu"
-#   "src/matrix_mul.cu"
-#   "src/matrix_mul_p.cu"
-#   "src/ckks_evaluator.cu"
-#   "src/argmax.cu"
-#   "src/bootstrapping/*.cu"
-#   "thirdparty/phantom-fhe/src/*.cu"
-# )
-# add_executable(main ${NEXUS_CUDA_SOURCE_FILES})
-# target_link_libraries(main PRIVATE ntl gmp m pthread)
-# target_include_directories(main PRIVATE
-#   /usr/local/include
-#   /usr/local/include/NTL
-#   src/bootstrapping/commmon
-#   src/bootstrapping
-# )
-
-# # NexusCUDA Boostrapping
-# file(GLOB_RECURSE NEXUS_CUDA_BOOTSTRAPING_SOURCE_FILES CONFIGURE_DEPENDS
-#   "src/bootstrapping.cu"
-#   "src/bootstrapping/*.cu"
-#   "src/ckks_evaluator.cu"
-#   "thirdparty/phantom-fhe/src/*.cu"
-# )
-
-# add_executable(bootstrapping ${NEXUS_CUDA_BOOTSTRAPING_SOURCE_FILES})
-# target_link_libraries(bootstrapping PRIVATE ntl gmp m pthread)
-# target_include_directories(bootstrapping PRIVATE
-#   /usr/local/include
-#   /usr/local/include/NTL
-#   src/bootstrapping/commmon
-#   src/bootstrapping
-# )
-
-# file(GLOB_RECURSE NEXUS_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
-#   "scratch/test.cu"
-#   "scratch/test_phantom_ckks.cuh"
-#   "scratch/Ct_pt_matrix_mul.cuh"
-#   "scratch/BatchEncoder.cuh"
-#   "scratch/Ct_ct_matrix_mul.cuh"
-#   "scratch/gelu_other.cuh"
-#   "scratch/layernorm.cuh"
-#   "scratch/softmax.cuh"
-#   "scratch/test_batch_encode_encrypt.hpp"
-#   "scratch/test_ct_pt_matrix_mul.cu"
-#   "scratch/test_ct_ct_matrix_mul.cu"
-#   "scratch/test_gelu.cuh"
-#   "scratch/test_layernorm.cuh"
-#   "scratch/test_softmax.cuh"
-#   "scratch/test_single_layer.cuh"
-#   "scratch/utils.cuh"
-#   "scratch/utils_moai.cuh"
-#   # "src/bootstrapping/*.cu"
-#   # "scratch/bootstrapping/*.cu"
-#   "scratch/bootstrapping.cu"
-#   "scratch/bootstrapping/*.cu"
-#   "scratch/ckks_evaluator_parallel.cu"
-#   "thirdparty/phantom-fhe/src/*.cu"
-# )
 
 file(GLOB_RECURSE MOAI_CUDA_SOURCE_FILES CONFIGURE_DEPENDS
   "src/test.cu"

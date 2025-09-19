@@ -24,13 +24,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, row_X));
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.emplace_back();
     }
   }
   if (nthreads == 1)
@@ -59,22 +58,20 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
     // std::vector<PhantomCiphertext> X_local(static_cast<size_t>(col_X));
     // for (int j = 0; j < col_X; ++j)
     // {
-    //   // 若 multiply_plain / add_inplace 不会修改输入，可直接引用 enc_X[j] 而无需拷贝
     //   X_local[static_cast<size_t>(j)] = deep_copy_cipher(enc_X[j], context, stream);
     // }
 
     // cudaStreamWaitEvent(stream.get_stream(), ev_start, 0);
     // cudaDeviceSynchronize();
-// 确保所有线程都已经设置好 wait 之后再开枪
+
 // #pragma omp barrier
 // #pragma omp single
 //     {
-//       // 起跑枪：现在才开始计时，预处理不包含
 //       cudaEventRecord(ev_start, timing_stream ? timing_stream : 0);
 //     }
 #pragma omp for schedule(static)
@@ -94,9 +91,9 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
         if (i > 0)
         {
           evaluator_local.rotate_vector_inplace(copy_w[j], i * num_batch, RotK, stream);
-          // cudaStreamSynchronize(stream.get_stream()); // 当前仍需要
+          // cudaStreamSynchronize(stream.get_stream());
           // PhantomCiphertext rotated;
-          // evaluator_local.rotate_vector(enc_W[j], i * num_batch, RotK, rotated); // 输出到 rotated
+          // evaluator_local.rotate_vector(enc_W[j], i * num_batch, RotK, rotated);
           // copy_w[j] = std::move(rotated);
         }
       }
@@ -128,7 +125,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
     cudaStreamSynchronize(stream.get_stream());
   }
 
-  // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
   // std::vector<cudaEvent_t> ev_done(nthreads);
   // for (int i = 0; i < nthreads; ++i)
   // {
@@ -136,13 +132,11 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   //   cudaEventRecord(ev_done[i], stream_pool[i].get_stream());
   // }
 
-  // 聚合所有 done 到计时流
   // for (int i = 0; i < nthreads; ++i)
   // {
   //   cudaStreamWaitEvent(timing_stream ? timing_stream : 0, ev_done[i], 0);
   // }
 
-  // 记录 stop 并计算时间
   // cudaEventRecord(ev_stop, timing_stream ? timing_stream : 0);
   // cudaEventSynchronize(ev_stop);
 
@@ -150,7 +144,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_colpacking(vector<PhantomCiphertext> 
   // cudaEventElapsedTime(&ms, ev_start, ev_stop);
   // cout << "Ct-Pt compute time = " << ms << " ms\n";
 
-  // 清理
   // for (auto &e : ev_done)
   //   cudaEventDestroy(e);
   // cudaEventDestroy(ev_start);
@@ -171,13 +164,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 32));
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
   {
     stream_pool.reserve(nthreads);
     for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.emplace_back();
     }
   }
   if (nthreads == 1)
@@ -212,15 +204,12 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaEventCreate(&ev_start_rot);
   // cudaEventCreate(&ev_stop_rot);
 
-  // // 可选：单独的计时流，避免用默认流 0
   // cudaStream_t timing_stream_rot = nullptr;
   // cudaStreamCreateWithFlags(&timing_stream_rot, cudaStreamNonBlocking);
 
-  // 确保所有线程都已经设置好 wait 之后再开枪
   // #pragma omp barrier
   // #pragma omp single
   //   {
-  //     // 起跑枪：现在才开始计时，预处理不包含
   //     cudaEventRecord(ev_start_rot, timing_stream_rot ? timing_stream_rot : 0);
   //   }
 
@@ -233,7 +222,7 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
     // cudaStreamWaitEvent(stream.get_stream(), ev_start_rot, 0);
 
@@ -266,7 +255,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     cudaStreamSynchronize(stream.get_stream());
   }
 
-  // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
   // std::vector<cudaEvent_t> ev_done_rot(nthreads);
   // for (int i = 0; i < nthreads; ++i)
   // {
@@ -274,13 +262,11 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   //   cudaEventRecord(ev_done_rot[i], stream_pool[i].get_stream());
   // }
 
-  // 聚合所有 done 到计时流
   // for (int i = 0; i < nthreads; ++i)
   // {
   //   cudaStreamWaitEvent(timing_stream_rot ? timing_stream_rot : 0, ev_done_rot[i], 0);
   // }
 
-  // 记录 stop 并计算时间
   // cudaEventRecord(ev_stop_rot, timing_stream_rot ? timing_stream_rot : 0);
   // cudaEventSynchronize(ev_stop_rot);
 
@@ -288,7 +274,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaEventElapsedTime(&ms, ev_start_rot, ev_stop_rot);
   // cout << "Ct-ct diag rotate compute time = " << ms << " ms\n";
 
-  // 清理
   // for (auto &e : ev_done_rot)
   //   cudaEventDestroy(e);
   // cudaEventDestroy(ev_start_rot);
@@ -300,7 +285,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaEventCreate(&ev_start_bsgs);
   // cudaEventCreate(&ev_stop_bsgs);
 
-  // // 可选：单独的计时流，避免用默认流 0
   // cudaStream_t timing_stream_bsgs = nullptr;
   // cudaStreamCreateWithFlags(&timing_stream_bsgs, cudaStreamNonBlocking);
 
@@ -313,15 +297,13 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
     // cudaStreamWaitEvent(stream.get_stream(), ev_start_bsgs, 0);
 
-    // 确保所有线程都已经设置好 wait 之后再开枪
     // #pragma omp barrier
     // #pragma omp single
     //     {
-    //       // 起跑枪：现在才开始计时，预处理不包含
     //       cudaEventRecord(ev_start_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
     //     }
 
@@ -392,7 +374,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
     cudaStreamSynchronize(stream.get_stream());
   }
 
-  // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
   // std::vector<cudaEvent_t> ev_done_bsgs(nthreads);
   // for (int i = 0; i < nthreads; ++i)
   // {
@@ -400,13 +381,11 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   //   cudaEventRecord(ev_done_bsgs[i], stream_pool[i].get_stream());
   // }
 
-  // 聚合所有 done 到计时流
   // for (int i = 0; i < nthreads; ++i)
   // {
   //   cudaStreamWaitEvent(timing_stream_bsgs ? timing_stream_bsgs : 0, ev_done_bsgs[i], 0);
   // }
 
-  // // 记录 stop 并计算时间
   // cudaEventRecord(ev_stop_bsgs, timing_stream_bsgs ? timing_stream_bsgs : 0);
   // cudaEventSynchronize(ev_stop_bsgs);
 
@@ -414,7 +393,6 @@ vector<PhantomCiphertext> ct_ct_matrix_mul_diagpacking(vector<PhantomCiphertext>
   // cudaEventElapsedTime(&ms, ev_start_bsgs, ev_stop_bsgs);
   // cout << "Ct-ct diag bsgs compute time = " << ms << " ms\n";
 
-  // // 清理
   // for (auto &e : ev_done_bsgs)
   //   cudaEventDestroy(e);
   // cudaEventDestroy(ev_start_bsgs);

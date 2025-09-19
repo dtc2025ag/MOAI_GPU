@@ -32,3 +32,18 @@ Amortized time,13.209
 
 2025/09/16
 
+Attention Block,436.427
+SelfOutput,54.479
+Attention Block,436.732
+SelfOutput,55.998
+1st Bootstrapping,580.622
+LayerNorm1,0.975
+2nd Bootstrapping,566.311
+Intermediate Linear,271.401
+GELU,31.637
+Final Linear,264.319
+3rd Bootstrapping,593.005
+LayerNorm2,0.975
+4th Bootstrapping,556.294
+Total time for one layer,3358.270
+Amortized time,13.118

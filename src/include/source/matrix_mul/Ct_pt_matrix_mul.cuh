@@ -96,8 +96,8 @@ using namespace moai;
 using std::vector;
 
 inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
-    vector<PhantomCiphertext> &enc_X, // ★ 非 const：匹配 evaluator 的非 const & 接口
-    const vector<vector<double>> &W,  // 权重只读即可
+    vector<PhantomCiphertext> &enc_X, 
+    const vector<vector<double>> &W,  
     int col_X, int col_W, int row_W,
     PhantomContext &context)
 {
@@ -134,24 +134,23 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
   // cudaSetDevice(1);
   const double scale = enc_X[0].scale();
 
-  // 线程数：不超过列数（避免空转）
   const int max_threads = omp_get_max_threads();
   const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
+
   if (stream_pool.size() < static_cast<size_t>(nthreads))
-  {
-    stream_pool.reserve(nthreads);
-    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back();
+      }
     }
-  }
 
   vector<double> time(col_W, 0.0);
 
-// —— 并行计算：每线程独立 Encoder/Evaluator（各自绑定线程私有的 PhantomCKKSEncoder） —— //
+
 #pragma omp parallel num_threads(nthreads)
   {
     // cudaSetDevice(1);
@@ -160,12 +159,12 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
     // } else {
-    //   stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    //   stream = stream_pool[tid];
     // }
 
     chrono::high_resolution_clock::time_point start, end;
@@ -179,7 +178,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
       PhantomPlaintext ecd_w_0_i;
       // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
       encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
-      bridge_to_default(stream); // ★ 跨流桥接
+      bridge_to_default(stream); // bridge to default stream after each encode
 
       PhantomCiphertext acc;
       start = chrono::high_resolution_clock::now();
@@ -189,23 +188,17 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
       // cout << "[DEBUG] time: " << elapsed << endl;
       time[i] += elapsed;
 
-      // 逐行累加 enc_X[j] * W[j][i]
 
       for (int j = 1; j < row_W; ++j)
       {
         PhantomPlaintext ecd_w_j_i;
         // encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
         encoder_local.encode(W[j][i], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
-        bridge_to_default(stream); // ★ 每次 encode 后桥接
+        bridge_to_default(stream); // bridge to default stream after each encode
 
         PhantomCiphertext tmp;
         start = chrono::high_resolution_clock::now();
         evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, tmp);
-
-        // 如需对齐 level，可按需打开
-        // if (tmp.params_id() != acc.params_id()) {
-        //     evaluator_local.mod_switch_to_inplace(tmp, acc.params_id());
-        // }
 
         evaluator_local.add_inplace(acc, tmp);
         end = chrono::high_resolution_clock::now();
@@ -214,6 +207,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 
         time[i] += elapsed;
       }
+
       start = chrono::high_resolution_clock::now();
       // 是否 rescale 取决于你的算术设计；这里保持和你原逻辑一致
       evaluator_local.rescale_to_next_inplace(acc, stream);
@@ -224,7 +218,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
       // cout << "[DEBUG] time: " << elapsed << endl;
       time[i] += elapsed;
 
-      // 放回结果
       output[static_cast<size_t>(i)] = std::move(acc);
     }
     cudaStreamSynchronize(stream.get_stream());
@@ -236,7 +229,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
   // }
   // cout << "ct-pt time(without encoding)" << total << " s" << endl;
 
-  // 保守起见：并行段后做一次全局同步，确保所有默认流工作完成
   // cudaDeviceSynchronize();
   // stream_pool.clear();
 
@@ -295,7 +287,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 //   return output;
 // }
 
-// CUDA_API_PER_THREAD_DEFAULT_STREAM=1
+// CUDA_API_PER_THREAD_DEFAULT_STREAM=1 for testing default stream isolation
 
 vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
                                            vector<vector<PhantomPlaintext>> &W, int col_X, int col_W, int row_W,
@@ -353,34 +345,30 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
 
     // std::vector<PhantomCiphertext> X_local(row_W);
     // for (int j = 0; j < row_W; ++j)
     //   X_local[j] = enc_X[j];
-    // —— 关键：每线程仅拷贝一次 enc_X —— //
     std::vector<PhantomCiphertext> X_local(static_cast<size_t>(row_W));
     for (int j = 0; j < row_W; ++j)
     {
-      // 若 multiply_plain / add_inplace 不会修改输入，可直接引用 enc_X[j] 而无需拷贝
       X_local[static_cast<size_t>(j)] = deep_copy_cipher(enc_X[j], context, stream);
     }
 
     cudaStreamWaitEvent(stream.get_stream(), ev_start, 0);
 
-    // 确保所有线程都已经设置好 wait 之后再开枪
 #pragma omp barrier
 #pragma omp single
     {
-      // 起跑枪：现在才开始计时，预处理不包含
       cudaEventRecord(ev_start, timing_stream ? timing_stream : 0);
     }
 
 #pragma omp for schedule(static)
     for (int i = 0; i < col_W; ++i)
     {
-      // PhantomCiphertext x0 = deep_copy_cipher(enc_X[0], context, stream); // 建议用“深拷贝/clone”，别用浅拷贝别名
-      // PhantomPlaintext p0 = W[0][i];                                      // 同上：若是浅拷，只会继续竞态
+      // PhantomCiphertext x0 = deep_copy_cipher(enc_X[0], context, stream);
+      // PhantomPlaintext p0 = W[0][i];                                      
       PhantomCiphertext acc, temp;
       // encode w[0][i]
       // Plaintext ecd_w_0_i;
@@ -396,8 +384,8 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
 
       for (int j = 1; j < row_W; ++j)
       {
-        // PhantomCiphertext xj = deep_copy_cipher(enc_X[j], context, stream); // 建议用“深拷贝/clone”，别用浅拷贝别名
-        // PhantomPlaintext pj = W[j][i];                                      // 同上：若是浅拷，只会继续竞态
+        // PhantomCiphertext xj = deep_copy_cipher(enc_X[j], context, stream); 
+        // PhantomPlaintext pj = W[j][i];                                     
         // encode w[j][i]
         // Plaintext ecd_w_j_i;
         // encoder.encode(W[j][i], scale, ecd_w_j_i);
@@ -419,7 +407,6 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     cudaStreamSynchronize(stream.get_stream());
   }
 
-  // 在并行区外创建/记录 ev_done 更清晰：每个线程结束前在各自流上 Record
   std::vector<cudaEvent_t> ev_done(nthreads);
   for (int i = 0; i < nthreads; ++i)
   {
@@ -427,13 +414,11 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
     cudaEventRecord(ev_done[i], stream_pool[i].get_stream());
   }
 
-  // 聚合所有 done 到计时流
   for (int i = 0; i < nthreads; ++i)
   {
     cudaStreamWaitEvent(timing_stream ? timing_stream : 0, ev_done[i], 0);
   }
 
-  // 记录 stop 并计算时间
   cudaEventRecord(ev_stop, timing_stream ? timing_stream : 0);
   cudaEventSynchronize(ev_stop);
 
@@ -441,7 +426,6 @@ vector<PhantomCiphertext> ct_pt_matrix_mul(vector<PhantomCiphertext> &enc_X,
   cudaEventElapsedTime(&ms, ev_start, ev_stop);
   cout << "Ct-Pt compute time = " << ms << " ms\n";
 
-  // 清理
   for (auto &e : ev_done)
     cudaEventDestroy(e);
   cudaEventDestroy(ev_start);
@@ -482,15 +466,14 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
-  {
-    stream_pool.reserve(nthreads);
-    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back(); 
+      }
     }
-  }
 
   vector<double> time(128, 0.0);
 #pragma omp parallel num_threads(nthreads)
@@ -500,12 +483,12 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
     // } else {
-    //   stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    //   stream = stream_pool[tid];
     // }
 
     chrono::high_resolution_clock::time_point start, end;
@@ -520,7 +503,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
         PhantomPlaintext ecd_w_0_i;
         // encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
         encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
-        bridge_to_default(stream); // ★ 跨流桥接
+        bridge_to_default(stream); // bridge to default stream after each encode
         // enc_X[0]*ecd_w[0][i]
         start = chrono::high_resolution_clock::now();
         evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
@@ -535,7 +518,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
           PhantomPlaintext ecd_w_j_i;
           // encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
           encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
-          bridge_to_default(stream); // ★ 每次 encode 后桥接
+          bridge_to_default(stream); // brige to default stream after each encode
 
           // enc_X[j]*ecd_w[j][i]
           PhantomCiphertext temp;
@@ -656,19 +639,17 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
   const int nthreads = std::max(1, std::min(max_threads, 32));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // —— 准备每线程一个流（拥有型 wrapper） —— //
   if (stream_pool.size() < static_cast<size_t>(nthreads))
-  {
-    stream_pool.reserve(nthreads);
-    for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
     {
-      stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+      stream_pool.reserve(nthreads);
+      for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
+      {
+        stream_pool.emplace_back();
+      }
     }
-  }
 
   vector<double> time(128, 0.0);
 
-  // —— 并行计算：每线程独立 Encoder/Evaluator（各自绑定线程私有的 PhantomCKKSEncoder） —— //
 #pragma omp parallel num_threads(nthreads)
   {
     // cudaSetDevice(1);
@@ -677,12 +658,12 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
     // phantom::util::cuda_stream_wrapper stream;
     // if (nthreads == 1){
     //   stream = *phantom::util::global_variables::default_stream;
     // } else {
-    //   stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    //   stream = stream_pool[tid];
     // }
 
     chrono::high_resolution_clock::time_point start, end;
@@ -705,7 +686,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
         PhantomPlaintext ecd_w_0_i;
         // encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
         encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i, stream);
-        bridge_to_default(stream); // ★ 跨流桥接
+        bridge_to_default(stream); // brige to default stream after each encode
         // enc_X[0]*ecd_w[0][i]
         start = chrono::high_resolution_clock::now();
         evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
@@ -731,7 +712,7 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
           PhantomPlaintext ecd_w_j_i;
           // encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
           encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i, stream);
-          bridge_to_default(stream); // ★ 每次 encode 后桥接
+          bridge_to_default(stream); // brige to default stream after each encode
           // enc_X[j]*ecd_w[j][i]
           PhantomCiphertext tempx;
           start = chrono::high_resolution_clock::now();
