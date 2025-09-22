@@ -13,7 +13,7 @@ OpenMP version=4.5
 cmake -S . -B build
 cd build
 make
-// Optimal omp thread number varies from different CPU and GPU combination, empirically 4-8.
+# Optimal omp thread number varies from different CPU and GPU combination, empirically 4-8.
 OMP_NUM_THREADS=4 ./test
 ```
 

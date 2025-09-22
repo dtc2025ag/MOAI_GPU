@@ -65,9 +65,14 @@ int main()
     // BatchLN_test();
     // cout << "unit test passed!" << endl;
 
-    cout << "single layer test" << endl;
-    single_layer_test();
-    cout << "single layer test passed!" << endl;
+    // cout << "single layer test" << endl;
+    // single_layer_test();
+    // cout << "single layer test passed!" << endl;
+
+
+    cout << "Rotary Position Embedding test" << endl;
+    rotary_pos_embed_test();
+    cout << "Rotary Position Embedding test passed!" << endl;
 
     return 0;
 }

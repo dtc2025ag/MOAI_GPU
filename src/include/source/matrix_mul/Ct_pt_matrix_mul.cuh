@@ -22,7 +22,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre(
 {
   vector<PhantomCiphertext> output(static_cast<size_t>(col_W));
 
-  // —— 基本检查 —— //
   if (enc_X.empty() || W.empty() || col_W <= 0 || row_W <= 0)
   {
     std::cout << "ERROR: empty inputs or bad dimensions.\n";

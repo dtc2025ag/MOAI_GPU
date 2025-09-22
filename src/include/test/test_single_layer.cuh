@@ -358,33 +358,6 @@ void read_feed_forward_param()
     // cout <<"LayerNorm2 bias last element: "<<layernorm2_beta[num_col-1]<<endl;
 }
 
-#include <set>
-std::vector<int> normalize_steps(const std::vector<int> &steps, int N)
-{
-    std::set<int> uniq; // 自动排序 + 去重
-
-    for (int k : steps)
-    {
-        // 先映射到 [0, N)
-        int t = ((k % N) + N) % N;
-
-        if (t == 0)
-            continue; // 0 对应恒等，不需要
-        if (t > N / 2)
-            t -= N; // 映射到 (-N/2, N/2]
-
-        if (t == -N / 2)
-            t = N / 2; // 统一成正代表
-        if (t < 0)
-            t = -t; // 只保留正代表（±k 等价）
-
-        uniq.insert(t);
-    }
-
-    // 转换为 vector
-    return std::vector<int>(uniq.begin(), uniq.end());
-}
-
 void single_layer_test()
 {
     cout << "Task: test one layer of BERT in CKKS scheme: " << endl;
