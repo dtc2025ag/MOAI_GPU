@@ -47,3 +47,20 @@ LayerNorm2,0.975
 4th Bootstrapping,556.294
 Total time for one layer,3358.270
 Amortized time,13.118
+
+2025/09/22
+
+
+Attention Block,460.772
+SelfOutput,5.692
+1st Bootstrapping,557.399
+LayerNorm1,0.990
+2nd Bootstrapping,557.213
+Intermediate Linear,296.964
+GELU,29.192
+Final Linear,24.107
+3rd Bootstrapping,560.642
+LayerNorm2,0.987
+4th Bootstrapping,559.027
+Total time for one layer,3052.986
+Amortized time,11.926

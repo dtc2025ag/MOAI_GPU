@@ -676,8 +676,6 @@ void single_layer_test()
 // delete enc_ecd_x
     vector<PhantomCiphertext>().swap(enc_ecd_x);
 
-    gettimeofday(&tstart1,NULL);
-
     int output_size = att_block[0].size();
 
     vector<PhantomCiphertext> att_output(num_head*output_size);
@@ -692,15 +690,11 @@ void single_layer_test()
     cout <<"Concatenation. size of output of attention block = "<<num_head<<" * "<<output_size<<" = "<<att_output.size()<<endl;
 
     vector<vector<PhantomCiphertext>>().swap(att_block);
-
+    double selfoutput_time;
     //att_output * selfoutput + selfoutput_bias
-    gettimeofday(&tstart1,NULL);
-    cudaDeviceSynchronize();
-    vector<PhantomCiphertext> att_selfoutput = ct_pt_matrix_mul_wo_pre_large(att_output, selfoutput, num_col, num_col, num_col, context);
-    cudaDeviceSynchronize();
-    gettimeofday(&tend1,NULL);
-    double selfoutput_time_temp = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
-    cout <<"selfoutput time(matrix_mul) = "<<selfoutput_time_temp<<endl;
+
+    vector<PhantomCiphertext> att_selfoutput = ct_pt_matrix_mul_wo_pre_large_single(att_output, selfoutput, num_col, num_col, num_col, context, selfoutput_time);
+
     int att_selfoutput_size = att_selfoutput.size();
     //cout <<"num of ct in att_selfoutput = "<<att_selfoutput_size<<endl;
     for (int i = 0; i < num_col; ++i){
@@ -718,8 +712,6 @@ void single_layer_test()
         evaluator.add_plain_inplace(att_selfoutput[i],ecd_self_bias);
     }
 
-    gettimeofday(&tend1,NULL);
-    double selfoutput_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"selfoutput time = "<<selfoutput_time<<endl;
     append_csv_row("../single_layer_results.csv", "SelfOutput", selfoutput_time);
     cout <<"Modulus chain index for the result: "<< context.get_context_data(att_selfoutput[0].params_id()).chain_depth()<<endl;
@@ -928,12 +920,12 @@ void single_layer_test()
 
     cout <<endl;
 */
-    // 线程数：不超过列数（避免空转）
+
     const int max_threads = omp_get_max_threads();
     const int nthreads = std::max(1, std::min(max_threads, 32));
     // std::cout << "nums of thread: " << nthreads << std::endl;
 
-    // —— 准备每线程一个流（拥有型 wrapper） —— //
+
     if (nthreads == 1)
     {
         stream_pool.reserve(nthreads);
@@ -944,10 +936,10 @@ void single_layer_test()
         stream_pool.reserve(nthreads);
         for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
         {
-        stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+        stream_pool.emplace_back();
         }
     }
-// —— 并行计算：每线程独立 Encoder/Evaluator（各自绑定线程私有的 PhantomCKKSEncoder） —— //
+
 #pragma omp parallel num_threads(nthreads)
   {
     // cudaSetDevice(1);
@@ -956,7 +948,7 @@ void single_layer_test()
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid];
 
 #pragma omp for schedule(static)    
         for (int i = 0; i < num_inter; ++i){
@@ -968,7 +960,7 @@ void single_layer_test()
                 }
             }
             encoder_local.encode(inter_bias_vec, inter_output[i].params_id(), inter_output[i].scale(), ecd_inter_bias, stream);
-            bridge_to_default(stream); // ★ 跨流桥接
+            bridge_to_default(stream); 
             evaluator_local.mod_switch_to_inplace(ecd_inter_bias, inter_output[i].params_id());
             inter_output[i].scale() = scale;
             ecd_inter_bias.scale() = scale;
@@ -1030,13 +1022,12 @@ void single_layer_test()
     // const int max_threads = omp_get_max_threads();
     // const int nthreads = std::max(1, std::min(max_threads, 4));
 
-    // —— 准备每线程一个流（拥有型 wrapper） —— //
     if (stream_pool.size() < static_cast<size_t>(nthreads))
     {
         stream_pool.reserve(nthreads);
         for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
         {
-            stream_pool.emplace_back(); // 默认构造：内部创建并持有一个新 CUDA 流
+            stream_pool.emplace_back(); 
         }
     }
     if (nthreads == 1)
@@ -1055,7 +1046,7 @@ void single_layer_test()
         // PhantomRelinKey relin_keys_local = secret_key_local.gen_relinkey(context);
 
         const int tid = omp_get_thread_num();
-        auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+        auto &stream = stream_pool[tid]; 
 #pragma omp for schedule(static)
         for (int i = 0; i < 96; ++i)
         {
@@ -1103,8 +1094,8 @@ void single_layer_test()
 */
     //gelu * final_weight + final_bias
     gettimeofday(&tstart1,NULL);
-
-    vector<PhantomCiphertext> final_output = ct_pt_matrix_mul_wo_pre_w_mask(gelu_output, final_weight,b_vec, num_inter, num_col, num_inter, context);
+    double final_time;
+    vector<PhantomCiphertext> final_output = ct_pt_matrix_mul_wo_pre_w_mask_single(gelu_output, final_weight,b_vec, num_inter, num_col, num_inter, context, final_time);
     int final_output_size = final_output.size();
     //cout <<"num of ct in final_output = "<<final_output_size<<endl;
 
@@ -1115,7 +1106,7 @@ void single_layer_test()
         moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
         const int tid = omp_get_thread_num();
-        auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+        auto &stream = stream_pool[tid];
 #pragma omp for schedule(static)
         for (int i = 0; i < num_col; ++i){
             PhantomPlaintext ecd_final_bias;
@@ -1126,7 +1117,7 @@ void single_layer_test()
                 }
             }
             encoder_local.encode(final_bias_vec, final_output[i].params_id(), final_output[i].scale(), ecd_final_bias, stream);
-            bridge_to_default(stream); // ★ 跨流桥接
+            bridge_to_default(stream);
             evaluator_local.mod_switch_to_inplace(ecd_final_bias, final_output[i].params_id());
             final_output[i].scale() = scale;
             ecd_final_bias.scale() = scale;
@@ -1153,7 +1144,7 @@ void single_layer_test()
     // }
 
     gettimeofday(&tend1,NULL);
-    double final_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
+    // double final_time = tend1.tv_sec-tstart1.tv_sec+(tend1.tv_usec-tstart1.tv_usec)/1000000.0;
     cout <<"Final layer time = "<<final_time<<endl;
     append_csv_row("../single_layer_results.csv", "Final Linear", final_time);
     cout <<"Modulus chain index after final layer: "<< context.get_context_data(final_output[0].params_id()).chain_depth()<<endl;

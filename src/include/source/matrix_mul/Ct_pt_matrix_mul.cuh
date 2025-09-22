@@ -197,19 +197,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_single(
   const int nthreads = std::max(1, std::min(max_threads, 1));
   // std::cout << "nums of thread: " << nthreads << std::endl;
 
-  // if (stream_pool.size() < static_cast<size_t>(nthreads))
-  // {
-  //   stream_pool.reserve(nthreads);
-  //   for (size_t i = stream_pool.size(); i < static_cast<size_t>(nthreads); ++i)
-  //   {
-  //     stream_pool.emplace_back();
-  //   }
-  // }
-  // if (nthreads == 1)
-  // {
-  //   stream_pool[0] = *phantom::util::global_variables::default_stream;
-  // }
-
   vector<double> time(col_W, 0.0);
 
 #pragma omp parallel num_threads(nthreads)
@@ -220,13 +207,7 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_single(
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid];
-    // phantom::util::cuda_stream_wrapper stream;
-    // if (nthreads == 1){
-    //   stream = *phantom::util::global_variables::default_stream;
-    // } else {
-    //   stream = stream_pool[tid];
-    // }
+
 
     chrono::high_resolution_clock::time_point start, end;
     double elapsed;
@@ -239,7 +220,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_single(
       PhantomPlaintext ecd_w_0_i;
       // encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
       encoder_local.encode(W[0][i], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
-      bridge_to_default(stream); // bridge to default stream after each encode
 
       PhantomCiphertext acc;
       start = chrono::high_resolution_clock::now();
@@ -278,7 +258,6 @@ inline vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_single(
 
       output[static_cast<size_t>(i)] = std::move(acc);
     }
-    cudaStreamSynchronize(stream.get_stream());
   }
 
   // double total = 0.0;
@@ -680,6 +659,102 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext
   return output;
 }
 
+vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large_single(vector<PhantomCiphertext> &enc_X,
+                                                        vector<vector<double>> &W, int col_X, int col_W, int row_W,
+                                                        PhantomContext &context, double &time_p)
+{
+
+  // const phantom::util::cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream;
+  // const auto &stream = stream_wrapper.get_stream();
+
+  vector<PhantomCiphertext> output(col_W);
+  double scale = enc_X[0].scale();
+
+  if (col_X != row_W)
+  {
+    cout << "ERROR: bad dimensions of X or W. " << endl;
+    return output;
+  }
+
+  PhantomCKKSEncoder phantom_encoder(context);
+  Encoder encoder(&context, &phantom_encoder);
+  Evaluator evaluator(&context, &phantom_encoder);
+
+  int col_W_t = col_W / 128;
+
+  // #pragma omp parallel for
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, 1));
+  // std::cout << "nums of thread: " << nthreads << std::endl;
+
+  vector<double> time(128, 0.0);
+#pragma omp parallel num_threads(nthreads)
+  {
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+
+    chrono::high_resolution_clock::time_point start, end;
+    double elapsed;
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < 128; ++i)
+    {
+      for (int k = 0; k < col_W_t; ++k)
+      {
+        // encode w[0][i]
+        PhantomPlaintext ecd_w_0_i;
+        // encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        encoder_local.encode(W[0][i * col_W_t + k], enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        // bridge_to_default(stream); // bridge to default stream after each encode
+        // enc_X[0]*ecd_w[0][i]
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
+        end = chrono::high_resolution_clock::now();
+        elapsed = duration_cast<duration<double>>(end - start).count();
+        time[i] += elapsed;
+        // evaluator.rescale_to_next_inplace(output[i]);
+
+        for (int j = 1; j < row_W; ++j)
+        {
+          // encode w[j][i]
+          PhantomPlaintext ecd_w_j_i;
+          // encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+          encoder_local.encode(W[j][i * col_W_t + k], enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+
+          // enc_X[j]*ecd_w[j][i]
+          PhantomCiphertext temp;
+          start = chrono::high_resolution_clock::now();
+          evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, temp);
+          // if(i == 0)cout <<log2(temp.scale())<<" "<<log2(output[i*col_W_t+k].scale())<<endl;
+          // evaluator.rescale_to_next_inplace(temp);
+          evaluator_local.add_inplace(output[i * col_W_t + k], temp);
+          end = chrono::high_resolution_clock::now();
+          elapsed = duration_cast<duration<double>>(end - start).count();
+          time[i] += elapsed;
+        }
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k]);
+        output[i * col_W_t + k].scale() = scale;
+        end = chrono::high_resolution_clock::now();
+        elapsed = duration_cast<duration<double>>(end - start).count();
+        time[i] += elapsed;
+        // if(i == 0) cout <<log2(output[i*col_W_t+k].scale())<<endl;
+      }
+    }
+  }
+
+  double total = 0.0;
+  for (double t : time){
+    total += t;
+  }
+  time_p = total;
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
+
+  return output;
+}
+
 // vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_large(vector<PhantomCiphertext> &enc_X,
 //                                                         vector<vector<double>> &W, int col_X, int col_W, int row_W,
 //                                                         PhantomContext &context)
@@ -873,6 +948,127 @@ vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertex
 
   return output;
 }
+
+vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask_single(vector<PhantomCiphertext> &enc_X,
+                                                         vector<vector<double>> &W, const vector<int> &bias_vec, int col_X, int col_W, int row_W,
+                                                         PhantomContext &context, double &time_p)
+{
+
+  // const phantom::util::cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream;
+  // const auto &stream = stream_wrapper.get_stream();
+
+  vector<PhantomCiphertext> output(col_W);
+  double scale = enc_X[0].scale();
+
+  if (col_X != row_W)
+  {
+    cout << "ERROR: bad dimensions of X or W. " << endl;
+    return output;
+  }
+
+  PhantomCKKSEncoder phantom_encoder(context);
+  Encoder encoder(&context, &phantom_encoder);
+  Evaluator evaluator(&context, &phantom_encoder);
+  size_t slot_count = phantom_encoder.slot_count();
+
+  int col_W_t = col_W / 128;
+  // cout <<col_W_t<<endl;
+
+  // #pragma omp parallel for
+  const int max_threads = omp_get_max_threads();
+  const int nthreads = std::max(1, std::min(max_threads, 1));
+  // std::cout << "nums of thread: " << nthreads << std::endl;
+
+  vector<double> time(128, 0.0);
+
+#pragma omp parallel num_threads(nthreads)
+  {
+    // cudaSetDevice(1);
+    PhantomCKKSEncoder phantom_encoder_local(context);
+    moai::Encoder encoder_local(&context, &phantom_encoder_local);
+    moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
+
+    const int tid = omp_get_thread_num();
+
+    chrono::high_resolution_clock::time_point start, end;
+    double elapsed;
+
+#pragma omp for schedule(static)
+    for (int i = 0; i < 128; ++i)
+    {
+      for (int k = 0; k < col_W_t; ++k)
+      {
+        // encode w[0][i]
+        vector<double> temp(slot_count, 0);
+        for (int j = 0; j < slot_count; ++j)
+        {
+          if (bias_vec[j] == 1)
+          {
+            temp[j] = W[0][i * col_W_t + k];
+          }
+        }
+        PhantomPlaintext ecd_w_0_i;
+        // encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        encoder_local.encode(temp, enc_X[0].params_id(), enc_X[0].scale(), ecd_w_0_i);
+        // enc_X[0]*ecd_w[0][i]
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.multiply_plain(enc_X[0], ecd_w_0_i, output[i * col_W_t + k]);
+        end = chrono::high_resolution_clock::now();
+        elapsed = duration_cast<duration<double>>(end - start).count();
+        // cout << "[DEBUG] time: " << elapsed << endl;
+        time[i] += elapsed;
+        // evaluator.rescale_to_next_inplace(output[i]);
+        // cout <<"mul 1."<<endl;
+
+        for (int j = 1; j < row_W; ++j)
+        {
+          // cout <<j<<" ";
+          // encode w[j][i]
+          vector<double> tempw(slot_count, 0);
+          for (int kk = 0; kk < slot_count; ++kk)
+          {
+            if (bias_vec[kk] == 1)
+            {
+              tempw[kk] = W[j][i * col_W_t + k];
+            }
+          }
+          PhantomPlaintext ecd_w_j_i;
+          // encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+          encoder_local.encode(tempw, enc_X[j].params_id(), enc_X[j].scale(), ecd_w_j_i);
+          // enc_X[j]*ecd_w[j][i]
+          PhantomCiphertext tempx;
+          start = chrono::high_resolution_clock::now();
+          evaluator_local.multiply_plain(enc_X[j], ecd_w_j_i, tempx);
+
+          // cout <<"mul. "<<endl;
+          // evaluator.rescale_to_next_inplace(temp);
+          evaluator_local.add_inplace(output[i * col_W_t + k], tempx);
+          end = chrono::high_resolution_clock::now();
+          elapsed = duration_cast<duration<double>>(end - start).count();
+          time[i] += elapsed;
+          // cout <<"add. "<<endl;
+        }
+        start = chrono::high_resolution_clock::now();
+        evaluator_local.rescale_to_next_inplace(output[i * col_W_t + k]);
+        output[i * col_W_t + k].scale() = scale;
+        end = chrono::high_resolution_clock::now();
+        elapsed = duration_cast<duration<double>>(end - start).count();
+        time[i] += elapsed;
+      }
+    }
+  }
+  // cout <<log(output[0].scale())<<endl;
+
+  double total = 0.0;
+  for (double t : time){
+    total += t;
+  }
+  time_p = total;
+  // cout << "ct-pt time(without encoding)" << total << " s" << endl;
+
+  return output;
+}
+
 
 // vector<PhantomCiphertext> ct_pt_matrix_mul_wo_pre_w_mask(vector<PhantomCiphertext> &enc_X,
 //                                                          vector<vector<double>> &W, const vector<int> &bias_vec, int col_X, int col_W, int row_W,

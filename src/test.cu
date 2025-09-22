@@ -37,9 +37,9 @@ int main()
     // ct_ct_matrix_mul_test();
     // cout << "unit test Ct-ct matrix multiplication passed!" << endl;
 
-    cout << "unit test: GeLU" << endl;
-    gelu_test();
-    cout << "unit test passed!" << endl;
+    // cout << "unit test: GeLU" << endl;
+    // gelu_test();
+    // cout << "unit test passed!" << endl;
 
     // cout << "unit test: LayerNorm" << endl;
     // layernorm_test();
@@ -65,9 +65,9 @@ int main()
     // BatchLN_test();
     // cout << "unit test passed!" << endl;
 
-    // cout << "single layer test" << endl;
-    // single_layer_test();
-    // cout << "single layer test passed!" << endl;
+    cout << "single layer test" << endl;
+    single_layer_test();
+    cout << "single layer test passed!" << endl;
 
     return 0;
 }
