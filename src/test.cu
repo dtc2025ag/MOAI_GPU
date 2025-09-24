@@ -70,9 +70,25 @@ int main()
     // cout << "single layer test passed!" << endl;
 
 
-    cout << "Rotary Position Embedding test" << endl;
-    rotary_pos_embed_test();
-    cout << "Rotary Position Embedding test passed!" << endl;
+    // cout << "Rotary Position Embedding test" << endl;
+    // rotary_pos_embed_test();
+    // cout << "Rotary Position Embedding test passed!" << endl;
+
+    // cout << "Causal Masked Softmax test" << endl;
+    // causal_masked_softmax_test();
+    // cout << "Causal Masked Softmax test passed!" << endl;
+
+    // cout << "SiLU coefficient export test" << endl;
+    // silu_coeff_verify();
+    // cout << "SiLU coefficient export test passed!" << endl;
+
+    // cout << "SiLU coefficient export test" << endl;
+    // silu_test();
+    // cout << "SiLU coefficient export test passed!" << endl;
+
+    cout << "RMSNorm test" << endl;
+    RMSNorm_test();
+    cout << "RMSNorm test passed!" << endl;
 
     return 0;
 }

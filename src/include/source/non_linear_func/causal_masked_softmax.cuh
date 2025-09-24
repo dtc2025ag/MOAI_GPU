@@ -1,0 +1,878 @@
+#include "include.cuh"
+// #include "../bootstrapping/Bootstrapper.cuh"
+
+using namespace std;
+using namespace std::chrono;
+using namespace phantom::util;
+using namespace phantom::arith;
+using namespace moai;
+
+
+
+// PhantomCiphertext exp(PhantomCiphertext &x, PhantomContext &context, PhantomRelinKey &relin_keys)
+// {
+//   // CKKSEncoder encoder(context);
+//   // Evaluator evaluator(context, encoder);
+//   PhantomCKKSEncoder phantom_encoder(context);
+//   // repack the phantom encoder to SEAL style
+//   Encoder encoder(&context, &phantom_encoder);
+//   Evaluator evaluator(&context, &phantom_encoder);
+
+//   PhantomPlaintext inverse_128;
+//   encoder.encode(0.0078125, x.params_id(), x.scale(), inverse_128);
+//   // evaluator.mod_switch_to_inplace(inverse_128,x.parms_id());
+//   // cout <<"encode 0.0078125"<<endl;
+
+//   PhantomCiphertext output;
+//   evaluator.multiply_plain(x, inverse_128, output);
+//   evaluator.rescale_to_next_inplace(output);
+//   // cout <<"x*0.0078125"<<endl;
+//   // cout <<log2(output.scale())<<endl;
+
+//   PhantomPlaintext one;
+//   encoder.encode(1.0, output.params_id(), output.scale(), one);
+//   // cout <<"encode 1"<<endl;
+//   // PhantomCiphertext res;
+//   evaluator.add_plain_inplace(output, one);
+//   // cout <<"x*0.0078125+1"<<endl;
+//   // evaluator.rescale_to_next_inplace(output);
+//   // cout <<"Modulus chain index for the result: "<< seal_context.get_context_data(output.parms_id()).chain_depth()<<endl;
+
+//   // compute output^128
+//   for (int i = 0; i < log2(128); ++i)
+//   {
+//     // cout <<i<<endl;
+//     evaluator.square_inplace(output);
+//     evaluator.relinearize_inplace(output, relin_keys);
+//     evaluator.rescale_to_next_inplace(output);
+//   }
+//   // cout <<"(x*0.0078125+1)^128"<<endl;
+//   // cout <<"Modulus chain index for the result: "<< seal_context.get_context_data(output.parms_id()).chain_depth()<<endl;
+
+//   return output;
+// }
+
+// PhantomCiphertext inverse(PhantomCiphertext &x, PhantomContext &context,
+//                           PhantomRelinKey &relin_keys, int iter)
+// {
+//   // by default, iter = 4 (from Nexus)
+//   //  CKKSEncoder encoder(seal_context);
+//   //  Evaluator evaluator(seal_context, encoder);
+//   PhantomCKKSEncoder phantom_encoder(context);
+//   // repack the phantom encoder to SEAL style
+//   Encoder encoder(&context, &phantom_encoder);
+//   Evaluator evaluator(&context, &phantom_encoder);
+
+//   PhantomPlaintext one;
+//   encoder.encode(1.0, x.params_id(), x.scale(), one);
+
+//   PhantomCiphertext y;
+//   evaluator.sub_plain(x, one, y);
+//   evaluator.negate_inplace(y);
+
+//   PhantomCiphertext tmp;
+//   evaluator.add_plain(y, one, tmp);
+
+//   PhantomCiphertext res = tmp;
+//   for (int i = 0; i < iter; ++i)
+//   {
+//     evaluator.square_inplace(y);
+//     evaluator.relinearize_inplace(y, relin_keys);
+//     evaluator.rescale_to_next_inplace(y);
+
+//     // cout <<"y scale = "<<log2(y.scale())<<" , one scale = "<<log2(one.scale())<<endl;
+//     encoder.encode(1.0, y.params_id(), y.scale(), one);
+//     evaluator.add_plain(y, one, tmp);
+
+//     evaluator.mod_switch_to_inplace(res, tmp.params_id());
+//     evaluator.multiply_inplace(res, tmp);
+//     evaluator.relinearize_inplace(res, relin_keys);
+//     evaluator.rescale_to_next_inplace(res);
+//   }
+
+//   return res;
+// }
+
+vector<PhantomCiphertext> causal_masked_softmax(vector<PhantomCiphertext> & enc_X, vector<int> & bias_vec, int input_num, PhantomContext& context,
+  PhantomRelinKey &relin_keys, int iter, PhantomSecretKey & sk){
+
+  int num = enc_X.size();
+//   cout <<"number of ct in output = "<<num<<endl;
+  vector<PhantomCiphertext> output(num);
+
+  // PhantomCKKSEncoder encoder(context);
+  // Evaluator evaluator(context, encoder);
+  PhantomCKKSEncoder phantom_encoder(context);
+  // repack the phantom encoder to SEAL style
+  Encoder encoder(&context, &phantom_encoder);
+  Evaluator evaluator(&context, &phantom_encoder);
+  size_t slot_count = encoder.slot_count();
+  //for test
+  Decryptor decryptor(&context, &sk);
+  // int slot_count = encoder.slot_count();
+  //cout <<"slot count = "<<slot_count<<endl;
+  size_t num_batch = slot_count/128;
+  //cout <<"number of batch = "<<num_batch<<endl;
+
+  //compute x_ij - 8
+  vector<PhantomCiphertext> enc_x_minus(num);
+
+  double minus_index = 8.1;
+
+  vector<double> minus(slot_count,0);
+  for (int i = 0; i < slot_count; ++i){
+    if(bias_vec[i] == 1){
+      minus[i] = minus_index;
+    }
+  }
+
+  for (int i = 0; i < num; ++i){
+    enc_x_minus[i] = enc_X[i];
+    //for slot with value neq 0, minus 8
+    //case 0: first line
+    if(i == 0){
+      PhantomPlaintext one;
+      encoder.encode(minus,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //case1: all zero row
+    else if(i > input_num && i <= (num-input_num)){
+
+    }
+    //case2: 0 - input_num line
+    else if(i <= input_num){
+      vector<double>temps1(slot_count,0);
+      int index = num_batch * (input_num-i);
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i < index){
+          temps1[i] = minus_index;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 1;
+      PhantomPlaintext one;
+      encoder.encode(temps1,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //case3: num-input - num line
+    else if(i > num-input_num){
+      vector<double>temps1(slot_count,0);
+      int index = (num-i) * num_batch;
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i >= index){
+          //cout <<i<<endl;
+          temps1[i] = minus_index;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 0;
+      PhantomPlaintext one;
+      encoder.encode(temps1,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //else{
+    //  cout <<"ERROR in computing e^x. "<<endl;
+   // }
+
+  }
+
+  //compute e^x_ij
+  vector<PhantomCiphertext> exp_x(num);
+
+  vector<double> s1(slot_count,1);
+  for (int i = 0; i < slot_count; ++i){
+    if(bias_vec[i] == 1){
+      s1[i] = 0;
+    }
+  }
+
+  // #pragma omp parallel for
+
+  for (int i = 0; i < num; ++i){
+    exp_x[i] = exp(enc_x_minus[i],context,relin_keys);
+
+    //for slot with value 0, minus 1
+    //case 0: first line
+    if(i == 0){
+      PhantomPlaintext one;
+      encoder.encode(s1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.sub_plain_inplace(exp_x[i],one);
+    }
+    //case1: all zero row
+    else if(i > input_num && i <= (num-input_num)){
+      PhantomPlaintext one;
+      encoder.encode(1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.sub_plain_inplace(exp_x[i],one);
+    }
+    //case2: 0 - input_num line
+    else if(i <= input_num){
+      vector<double>temps1(slot_count,1);
+      int index = num_batch * (input_num-i);
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i < index){
+          temps1[i] = 0;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 1;
+      PhantomPlaintext one;
+      encoder.encode(temps1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.sub_plain_inplace(exp_x[i],one);
+    }
+    //case3: num-input - num line
+    else if(i > num-input_num){
+      vector<double>temps1(slot_count,1);
+      int index = (num-i) * num_batch;
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i >= index){
+          //cout <<i<<endl;
+          temps1[i] = 0;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 0;
+      PhantomPlaintext one;
+      encoder.encode(temps1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.sub_plain_inplace(exp_x[i],one);
+    }
+    //else{
+    //  cout <<"ERROR in computing e^x. "<<endl;
+   // }
+
+  }
+
+
+//  cout <<"    Modulus chain for e^x: "<< seal_context.get_context_data(exp_x[0].parms_id()).chain_depth()<<endl;
+  //cout <<log2(exp_x[0].scale())<<endl;
+  PhantomPlaintext plain_result;
+  vector<double> result;
+
+    // cout <<"  decrypt of e^x: "<<endl;
+    // for (int i = 0; i < num; ++i){
+    //     decryptor.decrypt(exp_x[i], plain_result);
+
+    //     encoder.decode(plain_result, result);
+    //     cout <<i<<"-th: ";
+    //     for (int ind = 0 ; ind < 128 ; ++ind){
+    //     if(bias_vec[ind] == 1){
+    //         if(result[ind] > 0.0000001){
+    //         cout <<result[ind]<<" ";
+    //         }
+    //         else{
+    //         cout <<"0 ";
+    //         }
+    //     }
+    //     }
+    // cout <<endl;
+    // }
+  
+
+ // apply causal mask to e^x (column-packing)
+ // original implemention
+ /*
+  [[0,-inf,-inf,-inf],          
+  [0,0,-inf,-inf],
+  [0,0,0,-inf], 
+  [0,0,0,0]] 
+
+  attn_weight += attn_bias
+  {softmax}
+*/
+ // 2025/09/23 implemention
+ /*
+  causal_mask(128, 32768)=
+    [[(1) * 128) * 256],
+    [(0, (1)*127) * 256],
+    [(0,0,(1)*126) * 256],
+    ...
+    [(0,...,0,(1)*1) * 256]]
+  inside the softmax function
+  exp_x[i] multiply_plain causal_mask[i]
+ */
+
+  // 2025/09/23 implementation
+  // to adapt to previous inv data range, expand the corresponding position to original num times through causal mask (e^x * (128 / unmasked_pos_num)), result is the same
+  /*
+    causal_mask(128, 32768)=
+    [[(128, 64, ... , 1)) * 256],
+    [(0, 64, 128/3, ... , 1) * 256],
+    [(0, 0, 128/3, 32, ..., 1) * 256],
+    ...
+    [(0,...,0, 1) * 256]]
+  inside the softmax function
+  exp_x[i] multiply_plain causal_mask[i]
+  */
+
+
+    vector<vector<double>> causal_mask(128, vector<double>(32768));
+    for (int i = 0; i < 128; ++i){
+        for (int j = 0; j < 256; ++j){
+            for (int k = 0; k < 128; ++k){
+                if (k < i){
+                    causal_mask[i][j*128+k] = 0.0;
+                }
+                else{
+                    // causal_mask[i][j*128+k] = 1.0;
+                    causal_mask[i][j*128+k] = 1.0 * 128 / (k + 1);
+                }
+            }
+        }
+    }
+    // cout << "causal mask generated"<<endl;
+    // cout << "causal_mask: ";
+    for (int i = 0; i < 128; ++i){
+        cout << causal_mask[127][i] << " ";
+    }
+    cout << endl;
+
+    for (int i = 0; i < num; ++i)
+    {   
+        PhantomPlaintext ecd_mask;
+        encoder.encode(causal_mask[i], exp_x[i].params_id(), exp_x[i].scale(), ecd_mask);
+        evaluator.multiply_plain_inplace(exp_x[i], ecd_mask);
+        evaluator.rescale_to_next_inplace(exp_x[i]);
+    }
+    // cout << "causal mask applied to exp_x" << endl;
+
+    
+    // cout <<"TEST result during softmax: "<<endl;
+
+    // cout <<"  decrypt of e^x: "<<endl;
+    // for (int i = 0; i < num; ++i){
+    //     decryptor.decrypt(exp_x[i], plain_result);
+
+    //     encoder.decode(plain_result, result);
+    //     cout <<i<<"-th: ";
+    //     for (int ind = 0 ; ind < 128 ; ++ind){
+    //     if(bias_vec[ind] == 1){
+    //         if(abs(result[ind]) > 0.0000001){
+    //         cout <<result[ind]<<" ";
+    //         }
+    //         else{
+    //         cout <<"0 ";
+    //         }
+    //     }
+    //     }
+    // cout <<endl;
+    // }
+    
+
+
+  //compute /sum e^x_j
+  PhantomCiphertext sum_exp_x = exp_x[0];
+  for (int i = 1; i < num; ++i){
+    evaluator.add_inplace(sum_exp_x,exp_x[i]);
+  }
+
+    // // divided sum 128 = (1, 2, 4, 8, 16, 32, 64)
+    // // 128
+    // PhantomCiphertext sum_exp_x_128 = exp_x[0];
+    // for (int i = 1; i < num; ++i){
+    //     evaluator.add_inplace(sum_exp_x_128, exp_x[i]);
+    // }
+    // vector<double> mask_64(128, 1.0);
+    // for (int i = 0; i < num / 2; ++i){
+    //     mask_64[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_64;
+    // encoder.encode(mask_64, sum_exp_x_128.params_id(), sum_exp_x_128.scale(), ecd_mask_64);
+    // evaluator.multiply_plain_inplace(sum_exp_x_128, ecd_mask_64);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_128);
+    // sum_exp_x_128.scale() = pow(2.0, 40);
+    // // 64
+    // PhantomCiphertext sum_exp_x_64 = exp_x[0];
+    // for (int i = 1; i < num/2; ++i){
+    //     evaluator.add_inplace(sum_exp_x_64,exp_x[i]);
+    // }
+    // vector<double> mask_32(128, 1.0);
+    // for (int i = 0; i < num / 4; ++i){
+    //     mask_32[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_32;
+    // encoder.encode(mask_32, sum_exp_x_64.params_id(), sum_exp_x_64.scale(), ecd_mask_32);
+    // evaluator.multiply_plain_inplace(sum_exp_x_64, ecd_mask_32);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_64);
+    // sum_exp_x_64.scale() = pow(2.0, 40);
+    // // 32
+    // PhantomCiphertext sum_exp_x_32 = exp_x[0];
+    // for (int i = 1; i < num/4; ++i){
+    //     evaluator.add_inplace(sum_exp_x_32,exp_x[i]);
+    // }
+    // vector<double> mask_16(128, 1.0);
+    // for (int i = 0; i < num / 8; ++i){
+    //     mask_16[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_16;
+    // encoder.encode(mask_16, sum_exp_x_32.params_id(), sum_exp_x_32.scale(), ecd_mask_16);
+    // evaluator.multiply_plain_inplace(sum_exp_x_32, ecd_mask_16);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_32);
+    // sum_exp_x_32.scale() = pow(2.0, 40);
+    // // 16
+    // PhantomCiphertext sum_exp_x_16 = exp_x[0];
+    // for (int i = 1; i < num/8; ++i){
+    //     evaluator.add_inplace(sum_exp_x_16,exp_x[i]);
+    // }
+    // vector<double> mask_8(128, 1.0);
+    // for (int i = 0; i < num / 16; ++i){
+    //     mask_8[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_8;
+    // encoder.encode(mask_8, sum_exp_x_16.params_id(), sum_exp_x_16.scale(), ecd_mask_8);
+    // evaluator.multiply_plain_inplace(sum_exp_x_16, ecd_mask_8);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_16);
+    // sum_exp_x_16.scale() = pow(2.0, 40);
+    // // 8
+    // PhantomCiphertext sum_exp_x_8 = exp_x[0];
+    // for (int i = 1; i < num/16; ++i){
+    //     evaluator.add_inplace(sum_exp_x_8,exp_x[i]);
+    // }
+    // vector<double> mask_4(128, 1.0);
+    // for (int i = 0; i < num / 32; ++i){
+    //     mask_4[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_4;
+    // encoder.encode(mask_4, sum_exp_x_8.params_id(), sum_exp_x_8.scale(), ecd_mask_4);
+    // evaluator.multiply_plain_inplace(sum_exp_x_8, ecd_mask_4);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_8);
+    // sum_exp_x_8.scale() = pow(2.0, 40);
+    // // 4
+    // PhantomCiphertext sum_exp_x_4 = exp_x[0];
+    // for (int i = 1; i < num/32; ++i){
+    //     evaluator.add_inplace(sum_exp_x_4,exp_x[i]);
+    // }
+    // vector<double> mask_2(128, 1.0);
+    // for (int i = 0; i < num / 64; ++i){
+    //     mask_2[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_2;
+    // encoder.encode(mask_2, sum_exp_x_4.params_id(), sum_exp_x_4.scale(), ecd_mask_2);
+    // evaluator.multiply_plain_inplace(sum_exp_x_4, ecd_mask_2);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_4);
+    // sum_exp_x_4.scale() = pow(2.0, 40);
+    // // 2
+    // PhantomCiphertext sum_exp_x_2 = exp_x[0];
+    // for (int i = 1; i < num/64; ++i){
+    //     evaluator.add_inplace(sum_exp_x_2,exp_x[i]);
+    // }
+    // vector<double> mask_1(128, 1.0);
+    // for (int i = 0; i < num / 128; ++i){
+    //     mask_1[i] = 0.0;
+    // }
+    // PhantomPlaintext ecd_mask_1;
+    // encoder.encode(mask_1, sum_exp_x_2.params_id(), sum_exp_x_2.scale(), ecd_mask_1);
+    // evaluator.multiply_plain_inplace(sum_exp_x_2, ecd_mask_1);
+    // evaluator.rescale_to_next_inplace(sum_exp_x_2);
+    // sum_exp_x_2.scale() = pow(2.0, 40);
+    // // 1
+    // PhantomCiphertext sum_exp_x = exp_x[0];
+    // evaluator.rescale_to_next_inplace(sum_exp_x);
+    // sum_exp_x.scale() = pow(2.0, 40);
+
+    // // sum all
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_2);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_4);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_8);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_16);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_32);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_64);
+    // evaluator.add_inplace(sum_exp_x, sum_exp_x_128);
+    
+
+
+
+  // cout <<"  decrypt of sum_exp_(x-8): "<<endl;;
+  // decryptor.decrypt(sum_exp_x,plain_result);
+  // encoder.decode(plain_result,result);
+  // for (int ind = 0 ; ind < 128 ; ++ind){
+  //   if(bias_vec[ind] == 1){
+  //       cout <<result[ind]<<endl;
+  //   }
+  // }
+  // cout <<endl;
+
+/*
+  //encode 1/64
+  double scalar = 1.0/64.0;
+  Plaintext ecd_s;
+  encoder.encode(scalar,sum_exp_x.scale(),ecd_s);
+  evaluator.mod_switch_to_inplace(ecd_s,sum_exp_x.parms_id());
+  evaluator.multiply_plain_inplace(sum_exp_x,ecd_s);
+  evaluator.rescale_to_next_inplace(sum_exp_x);
+  //cout <<log2(sum_exp_x.scale())<<endl;
+
+  cout <<"  decrypt of 1/64*sum_exp_(x-3): ";
+  decryptor.decrypt(sum_exp_x,plain_result);
+  encoder.decode(plain_result,result);
+  for (int ind = 0 ; ind < slot_count ; ++ind){
+    if(bias_vec[ind] == 1){
+      if(result[ind] > 0.00001){
+          cout <<result[ind]<<" ";
+        }
+        else{
+          cout <<"0 ";
+        }
+    }
+  }
+  cout <<endl;
+*/
+  //compute Inv(sum_exp_x)
+  PhantomCiphertext inv_sum = inverse(sum_exp_x,context,relin_keys,iter);
+//   PhantomCiphertext inv_sum = inverse(sum_exp_x,context,relin_keys,9);
+ // cout <<"Modulus chain for inv(sum): "<< seal_context.get_context_data(inv_sum.parms_id()).chain_depth()<<endl;
+  //cout <<log2(inv_sum.scale())<<endl;
+
+  // cout <<"  decrypt of inv(sum_exp_(x-8)): "<<endl;
+  // decryptor.decrypt(inv_sum,plain_result);
+  // encoder.decode(plain_result,result);
+  // for (int ind = 0 ; ind < 128 ; ++ind){
+  //   if(bias_vec[ind] == 1){
+  //      cout <<result[ind]<<endl;
+  //   }
+  // }
+  // cout <<endl;
+
+  //evaluator.mod_switch_to_inplace(ecd_s,inv_sum.parms_id());
+  //evaluator.multiply_plain_inplace(inv_sum,ecd_s);
+  //evaluator.rescale_to_next_inplace(inv_sum);
+/*
+  vector<double> s0(slot_count,0);
+  for (int i = 0; i < slot_count; ++i){
+    if(bias_vec[i] != 0){
+      s0[i] = scalar;
+    }
+  }
+  Plaintext ps0;
+  encoder.encode(s0,inv_sum.scale(),ps0);
+  evaluator.mod_switch_to_inplace(ps0,inv_sum.parms_id());
+  evaluator.multiply_plain_inplace(inv_sum,ps0);
+  evaluator.rescale_to_next_inplace(inv_sum);
+*/
+/*
+  //cout <<log2(sum_exp_x.scale())<<endl;
+  cout <<"  decrypt of 1/64*inv(1/64*sum_exp_(x-3)) = inv(sum_exp_(x-3)): ";
+  decryptor.decrypt(inv_sum,plain_result);
+  encoder.decode(plain_result,result);
+  for (int ind = 0 ; ind < slot_count ; ++ind){
+    if(bias_vec[ind] == 1){
+     // if(result[ind] > 0.00001){
+          cout <<result[ind]<<" ";
+     //   }
+     //   else{
+     //     cout <<"0 ";
+     //   }
+    }
+  }
+  cout <<endl;
+*/
+  // #pragma omp parallel for
+
+  for (int i = 0; i < num; ++i){
+    evaluator.mod_switch_to_inplace(exp_x[i],inv_sum.params_id());
+    evaluator.multiply(exp_x[i],inv_sum,output[i]);
+    evaluator.relinearize_inplace(output[i],relin_keys);
+    evaluator.rescale_to_next_inplace(output[i]);
+  }
+/*
+  cout <<"  decrypt of e^x/sum_exp_x: ";
+  decryptor.decrypt(output[0],plain_result);
+  encoder.decode(plain_result,result);
+  for (int ind = 0 ; ind < slot_count ; ++ind){
+    if(bias_vec[ind] == 1){
+      if(result[ind] > 0.00001){
+          cout <<result[ind]<<" ";
+        }
+        else{
+          cout <<"0 ";
+        }
+    }
+  }
+  cout <<endl;
+*/
+
+  return output;
+
+}
+
+vector<PhantomCiphertext> causal_masked_softmax_boot(vector<PhantomCiphertext> & enc_X, vector<int> & bias_vec, int input_num, PhantomContext& context,
+  PhantomRelinKey &relin_keys, int iter, PhantomSecretKey & sk, Bootstrapper& bootstrapper_att, int layer_id){
+
+  int num = enc_X.size();
+  double scale = enc_X[0].scale();
+  //cout <<"number of ct in output = "<<num<<endl;
+  vector<PhantomCiphertext> output(num);
+
+  // CKKSEncoder encoder(context);
+  // Evaluator evaluator(context, encoder);
+  PhantomCKKSEncoder phantom_encoder(context);
+  Encoder encoder(&context, &phantom_encoder);
+  Evaluator evaluator(&context, &phantom_encoder);
+  //for test
+  Decryptor decryptor(&context, &sk);
+  int slot_count = encoder.slot_count();
+  //cout <<"slot count = "<<slot_count<<endl;
+  int num_batch = slot_count/128;
+  //cout <<"number of batch = "<<num_batch<<endl;
+  vector<double> minus_index_vec = {7.5, 9.9, 13.6, 13.3, 9.5, 8, 10.3, 9, 9, 9, 11, 7};
+
+  //compute x_ij - 8
+  vector<PhantomCiphertext> enc_x_minus(num);
+
+  double minus_index = minus_index_vec[layer_id];
+//  cout <<"softmax max = "<<minus_index<<endl;
+  vector<double> minus(slot_count,0);
+  for (int i = 0; i < slot_count; ++i){
+    if(bias_vec[i] == 1){
+      minus[i] = minus_index;
+    }
+  }
+
+  // #pragma omp parallel for
+
+  for (int i = 0; i < num; ++i){
+    enc_x_minus[i] = enc_X[i];
+    //for slot with value neq 0, minus 8
+    //case 0: first line
+    if(i == 0){
+      PhantomPlaintext one;
+      encoder.encode(minus,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //case1: all zero row
+    else if(i > input_num && i <= (num-input_num)){
+
+    }
+    //case2: 0 - input_num line
+    else if(i <= input_num){
+      vector<double>temps1(slot_count,0);
+      int index = num_batch * (input_num-i);
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i < index){
+          temps1[i] = minus_index;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 1;
+      PhantomPlaintext one;
+      encoder.encode(temps1,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //case3: num-input - num line
+    else if(i > num-input_num){
+      vector<double>temps1(slot_count,0);
+      int index = (num-i) * num_batch;
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i >= index){
+          //cout <<i<<endl;
+          temps1[i] = minus_index;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 0;
+      PhantomPlaintext one;
+      encoder.encode(temps1,enc_x_minus[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,enc_x_minus[i].params_id());
+      evaluator.sub_plain_inplace(enc_x_minus[i],one);
+    }
+    //else{
+    //  cout <<"ERROR in computing e^x. "<<endl;
+   // }
+
+  }
+
+  //compute e^x_ij
+  vector<PhantomCiphertext> exp_x(num);
+
+  vector<double> s1(slot_count,0);
+  for (int i = 0; i < slot_count; ++i){
+    if(bias_vec[i] == 1){
+      s1[i] = 1;
+    }
+  }
+
+  // #pragma omp parallel for
+
+  for (int i = 0; i < num; ++i){
+    exp_x[i] = exp(enc_x_minus[i],context,relin_keys);
+
+    //for slot with value 0, times 0
+    //case 0: first line
+    if(i == 0){
+      PhantomPlaintext one;
+      encoder.encode(s1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.multiply_plain_inplace(exp_x[i],one);
+      evaluator.rescale_to_next_inplace(exp_x[i]);
+    }
+    //case1: all zero row
+    else if(i > input_num && i <= (num-input_num)){
+      PhantomPlaintext one;
+      encoder.encode(0,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.multiply_plain_inplace(exp_x[i],one);
+      evaluator.rescale_to_next_inplace(exp_x[i]);
+    }
+    //case2: 0 - input_num line
+    else if(i <= input_num){
+      vector<double>temps1(slot_count,0);
+      int index = num_batch * (input_num-i);
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i < index){
+          temps1[i] = 1;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 1;
+      PhantomPlaintext one;
+      encoder.encode(temps1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.multiply_plain_inplace(exp_x[i],one);
+      evaluator.rescale_to_next_inplace(exp_x[i]);
+    }
+    //case3: num-input - num line
+    else if(i > num-input_num){
+      vector<double>temps1(slot_count,0);
+      int index = (num-i) * num_batch;
+      for (int i = 0; i < slot_count; ++i){
+        if(bias_vec[i] == 1 && i >= index){
+          //cout <<i<<endl;
+          temps1[i] = 1;
+        }
+      }
+      //cout <<index/num<<endl;
+      //s1[index] = 0;
+      PhantomPlaintext one;
+      encoder.encode(temps1,exp_x[i].scale(),one);
+      evaluator.mod_switch_to_inplace(one,exp_x[i].params_id());
+      evaluator.multiply_plain_inplace(exp_x[i],one);
+      evaluator.rescale_to_next_inplace(exp_x[i]);
+    }
+    //else{
+    //  cout <<"ERROR in computing e^x. "<<endl;
+   // }
+    exp_x[i].scale() = scale;
+
+  }
+  /*
+  //cout <<"    Modulus chain for e^x: "<< seal_context.get_context_data(exp_x[0].parms_id()).chain_depth()<<endl;
+  //cout <<"    Modulus chain for e^x should >= 3"<<endl;
+  //cout <<log2(exp_x[0].scale())<<endl;
+  Plaintext plain_result;
+  vector<double> result;
+
+  cout <<"Decrypt + decode result of e^(x-13): "<<endl;
+    //decrypt and decode
+    for (int i = 0; i < 5; ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(exp_x[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(bias_vec[ind] == 1){
+                cout <<result[ind]<<" ";
+            }
+        }
+        cout <<endl;
+
+    }
+
+    for (int i = exp_x.size()-5; i < exp_x.size(); ++i){
+        Plaintext plain_result;
+        decryptor.decrypt(exp_x[i], plain_result);
+        vector<double> result;
+        encoder.decode(plain_result, result);
+        cout <<i+1<<"-th ciphertext: ";
+        for (int ind = 0 ; ind < slot_count ; ++ind){
+            if(bias_vec[ind] == 1){
+                cout <<result[ind]<<" ";
+            }
+        }
+        cout <<endl;
+
+    }
+*/
+  //compute /sum e^x_j
+  PhantomCiphertext sum_exp_x = exp_x[0];
+  for (int i = 1; i < num; ++i){
+    evaluator.add_inplace(sum_exp_x,exp_x[i]);
+  }
+  //evaluator.rescale_to_next_inplace(sum_exp_x);
+
+  //add 1*10^-5
+  PhantomPlaintext eps;
+  encoder.encode(0.00001, sum_exp_x.params_id(), sum_exp_x.scale(), eps);
+  evaluator.add_plain_inplace(sum_exp_x,eps);
+  sum_exp_x.scale()=scale;
+/*
+  cout <<"  decrypt of sum_exp_(x-13): "<<endl;;
+  decryptor.decrypt(sum_exp_x,plain_result);
+  encoder.decode(plain_result,result);
+  for (int ind = 0 ; ind < slot_count ; ++ind){
+    if(bias_vec[ind] == 1){
+        cout <<"("<<result[ind]<<" "<<1/result[ind]<<") ";
+    }
+  }
+  cout <<endl;
+*/
+  //mod switch to the lowest level
+  while(context.get_context_data(sum_exp_x.params_id()).chain_depth() != 0){
+    evaluator.mod_switch_to_next_inplace(sum_exp_x);
+  }
+  //cout <<"    Modulus chain before bootstrapping: "<< seal_context.get_context_data(sum_exp_x.parms_id()).chain_depth()<<endl;
+
+  //bootstrapping sum_exp_(x-8)
+  PhantomCiphertext rtn;
+  bootstrapper_att.bootstrap_3(rtn,sum_exp_x);
+  //cout <<"    Modulus chain after bootstrapping: "<< seal_context.get_context_data(rtn.parms_id()).chain_depth()<<endl;
+  while (context.get_context_data(rtn.params_id()).chain_depth() > iter + 1 + 3){
+    evaluator.mod_switch_to_next_inplace(rtn);
+  }
+  //cout <<"    Modulus chain after bootstrapping: "<< seal_context.get_context_data(rtn.parms_id()).chain_depth()<<endl;
+  //cout <<"    Modulus chain for bootstrapped ct should >= "<<iter+1<<" + modulus chain for e^x"<<endl;
+  //compute Inv(sum_exp_x)
+  PhantomCiphertext inv_sum = inverse(rtn,context,relin_keys,iter);
+  inv_sum.scale() = scale;
+  //cout <<"Modulus chain for inv(sum): "<< seal_context.get_context_data(inv_sum.parms_id()).chain_depth()<<endl;
+  //cout <<log2(inv_sum.scale())<<endl;
+  if(context.get_context_data(exp_x[0].params_id()).chain_depth()
+      <context.get_context_data(inv_sum.params_id()).chain_depth()){
+      evaluator.mod_switch_to_inplace(inv_sum,exp_x[0].params_id());
+    }
+  //cout <<"Modulus chain for modswitch(inv(sum)): "<< seal_context.get_context_data(inv_sum.parms_id()).chain_depth()<<endl;
+  //cout <<"Modulus chain for modswitch(exp_x): "<< seal_context.get_context_data(exp_x[0].parms_id()).chain_depth()<<endl;
+/*
+  cout <<"  decrypt of inv(sum_exp_(x-8)): "<<endl;
+  decryptor.decrypt(inv_sum,plain_result);
+  encoder.decode(plain_result,result);
+  for (int ind = 0 ; ind < slot_count ; ++ind){
+    if(bias_vec[ind] == 1){
+       cout <<result[ind]<<" ";
+    }
+  }
+  cout <<endl;
+*/
+  // #pragma omp parallel for
+
+  for (int i = 0; i < num; ++i){
+    if(context.get_context_data(exp_x[i].params_id()).chain_depth()
+      >context.get_context_data(inv_sum.params_id()).chain_depth()){
+      evaluator.mod_switch_to_inplace(exp_x[i],inv_sum.params_id());
+    }
+    evaluator.multiply(exp_x[i],inv_sum,output[i]);
+    evaluator.relinearize_inplace(output[i],relin_keys);
+    evaluator.rescale_to_next_inplace(output[i]);
+    output[i].scale() = scale;
+  }
+
+  return output;
+
+}

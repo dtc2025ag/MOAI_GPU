@@ -173,6 +173,10 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
 #include "source/non_linear_func/softmax.cuh"
 #include "source/att_block/single_att_block.cuh"
 #include "source/matrix_mul/Rotary_Position_Embedding.cuh"
+#include "source/non_linear_func/causal_masked_softmax.cuh"
+#include "source/non_linear_func/Chebyshev.cuh"
+#include "source/non_linear_func/silu.cuh"
+#include "source/non_linear_func/RMSNorm.cuh"
 
 // test code
 #include "test/test_phantom_ckks.cuh"
@@ -186,5 +190,8 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
 #include "test/non_linear_func/test_BPmax_BatchLN.cuh"
 #include "test/test_single_layer.cuh"
 #include "test/matrix_mul/test_rotary_position_embedding.cuh"
+#include "test/non_linear_func/test_causal_masked_softmax.cuh"
+#include "test/non_linear_func/test_silu.cuh"
+#include "test/non_linear_func/test_RMSNorm.cuh"
 
 #endif

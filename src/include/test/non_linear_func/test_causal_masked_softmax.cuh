@@ -4,110 +4,7 @@ using namespace std;
 using namespace phantom;
 using namespace moai;
 
-void exp_inv_test()
-{
-    cout << "Task: test exp function and inverse function in CKKS scheme: " << endl;
-
-    EncryptionParameters parms(scheme_type::ckks);
-
-    size_t poly_modulus_degree = 65536;
-    parms.set_poly_modulus_degree(poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 40, 40,
-                                                                       40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 60}));
-    double scale = pow(2.0, 40);
-    long sparse_slots = 32768;
-    parms.set_sparse_slots(sparse_slots);
-    PhantomContext context(parms);
-
-    cout << "Set encryption parameters and print" << endl;
-    print_parameters(context);
-
-    // KeyGenerator keygen(context);
-    // SecretKey secret_key = keygen.secret_key();
-    // PublicKey public_key;
-    // keygen.create_public_key(public_key);
-    // RelinKeys relin_keys;
-    // keygen.create_relin_keys(relin_keys);
-
-    PhantomSecretKey secret_key(context);
-    PhantomPublicKey public_key = secret_key.gen_publickey(context);
-    PhantomRelinKey relin_keys = secret_key.gen_relinkey(context);
-
-    // Encryptor encryptor(context, public_key);
-    // Decryptor decryptor(context, secret_key);
-    // CKKSEncoder encoder(context);
-
-    Encryptor encryptor(&context, &public_key);
-    Decryptor decryptor(&context, &secret_key);
-    // CKKSEncoder encoder(context);
-    PhantomCKKSEncoder phantom_encoder(context);
-    // repack the phantom encoder to SEAL style
-    Encoder encoder(&context, &phantom_encoder);
-    size_t slot_count = encoder.slot_count();
-
-    struct timeval tstart1, tend1;
-
-    // construct input ciphertext
-    double pt = 1;
-    for (int ind = 0; ind < 1; ++ind)
-    {
-
-        // double pt = 1.5;
-        pt += 0.5;
-        PhantomPlaintext one;
-        encoder.encode(pt, scale, one);
-        PhantomCiphertext x;
-        encryptor.encrypt(one, x);
-        cout << "input encode and encrypt, pt = " << pt << endl;
-        cout << "Modulus chain index for x: " << context.get_context_data(x.params_id()).chain_depth() << endl;
-
-        // compute exp
-        PhantomCiphertext enc_exp = exp(x, context, relin_keys);
-        cout << "exp. " << endl;
-        cout << "Modulus chain index for e^x: " << context.get_context_data(enc_exp.params_id()).chain_depth() << endl;
-        // decrypt and decode
-        PhantomPlaintext dec_exp;
-        decryptor.decrypt(enc_exp, dec_exp);
-        vector<double> result;
-        encoder.decode(dec_exp, result);
-        cout << "Decrypt of " << pt << "^128: " << endl;
-        for (int ind = 0; ind < 5; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << "... ";
-        for (int ind = slot_count - 5; ind < slot_count; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << endl;
-        cout << endl;
-
-        cout << "Modulus chain index for the result: " << context.get_context_data(x.params_id()).chain_depth() << endl;
-        // compute inverse
-        PhantomCiphertext enc_inv = inverse(x, context, relin_keys, 8);
-        cout << "inv. " << endl;
-        cout << "Modulus chain index for the result: " << context.get_context_data(enc_inv.params_id()).chain_depth() << endl;
-        // decrypt and decode
-        PhantomPlaintext dec_inv;
-        decryptor.decrypt(enc_inv, dec_inv);
-        // vector<double> result;
-        encoder.decode(dec_inv, result);
-        cout << "Decrypt of inverse of " << pt << ": " << endl;
-        for (int ind = 0; ind < 5; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << "... ";
-        for (int ind = slot_count - 5; ind < slot_count; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << endl;
-    }
-}
-
-void softmax_test()
+void causal_masked_softmax_test()
 {
     cout << "Task: test softmax function (without bootstrapping version) with column encoding in CKKS scheme: " << endl;
 
@@ -118,6 +15,7 @@ void softmax_test()
     // parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {51, 46, 46, 46, 46,
     //                                                                    46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 58}));
     parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {58, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 58})); // NEXUS params
+                                                                        // 40, 40, 40, 40, 58}));
     long sparse_slots = 32768;
     parms.set_sparse_slots(sparse_slots);
     double scale = pow(2.0, 40);
@@ -163,7 +61,7 @@ void softmax_test()
         {
             for (int k = 0; k < num_col; ++k)
             {
-                input_x[i][j][k] = 0.01;
+                input_x[i][j][k] = 1;
             }
             /*
             for (int k = 0; k < 10; ++k){
@@ -186,55 +84,74 @@ void softmax_test()
     vector<int> bias_vec(slot_count, 1);
     gettimeofday(&tstart1, NULL);
 
-    vector<PhantomCiphertext> enc_softmax = softmax(enc_ecd_x, bias_vec, num_X, context, relin_keys, 4, secret_key);
+    vector<PhantomCiphertext> enc_softmax = causal_masked_softmax(enc_ecd_x, bias_vec, num_X, context, relin_keys, 4, secret_key);
 
     gettimeofday(&tend1, NULL);
     double softmax_time = tend1.tv_sec - tstart1.tv_sec + (tend1.tv_usec - tstart1.tv_usec) / 1000000.0;
     cout << "softmax time = " << softmax_time << endl;
     cout << "Modulus chain index for softmax(x): " << context.get_context_data(enc_softmax[0].params_id()).chain_depth() << endl;
-    append_csv_row("../results.csv", "softmax_without_boot", softmax_time);
+    // append_csv_row("../results.csv", "softmax_without_boot", softmax_time);
     cout << "Decrypt + decode result: " << endl;
+    vector<double> softmax_rowsum_check(128, 0.0);
     // decrypt and decode
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 128; ++i)
     {
         PhantomPlaintext plain_result;
         decryptor.decrypt(enc_softmax[i], plain_result);
         vector<double> result;
         encoder.decode(plain_result, result);
         cout << i + 1 << "-th ciphertext: ";
-        for (int ind = 0; ind < 5; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << "... ";
-        for (int ind = slot_count - 5; ind < slot_count; ++ind)
-        {
-            cout << result[ind] << " ";
+        for (int ind = 0; ind < 128; ++ind)
+        {   
+            softmax_rowsum_check[ind] += result[ind];
+            if(abs(result[ind]) > 0.0000001){
+                cout <<result[ind]<<" ";
+            }
+            else{
+                cout <<"0 ";
+            }
         }
         cout << endl;
+        // cout << "... ";
+        // for (int ind = slot_count - 5; ind < slot_count; ++ind)
+        // {
+        //     cout << result[ind] << " ";
+        // }
+        // cout << endl;
     }
-    cout << "......" << endl;
-    for (int i = num_col - 5; i < num_col; ++i)
+    cout << "Check sum of each row (should be close to 1): " << endl;
+    for (int i = 0; i < 128; ++i)
     {
-        PhantomPlaintext plain_result;
-        decryptor.decrypt(enc_softmax[i], plain_result);
-        vector<double> result;
-        encoder.decode(plain_result, result);
-        cout << i + 1 << "-th ciphertext: ";
-        for (int ind = 0; ind < 5; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << "... ";
-        for (int ind = slot_count - 5; ind < slot_count; ++ind)
-        {
-            cout << result[ind] << " ";
-        }
-        cout << endl;
+        cout << softmax_rowsum_check[i] << " ";
     }
+    cout << endl;
+    // cout << "......" << endl;
+    // for (int i = num_col - 5; i < num_col; ++i)
+    // {
+    //     PhantomPlaintext plain_result;
+    //     decryptor.decrypt(enc_softmax[i], plain_result);
+    //     vector<double> result;
+    //     encoder.decode(plain_result, result);
+    //     cout << i + 1 << "-th ciphertext: " << endl;
+    //     for (int ind = 0; ind < 128; ++ind)
+    //     {
+    //         if(result[ind] > 0.00001){
+    //         cout <<result[ind]<<" ";
+    //         }
+    //         else{
+    //         cout <<"0 ";
+    //         }
+    //     }
+    //     // cout << "... ";
+    //     // for (int ind = slot_count - 5; ind < slot_count; ++ind)
+    //     // {
+    //     //     cout << result[ind] << " ";
+    //     // }
+    //     cout << endl;
+    // }
 }
 
-void softmax_boot_test()
+void causal_masked_softmax_boot_test()
 {
     cout << "Task: test softmax function (with bootstrapping version) with column encoding in CKKS scheme: " << endl;
 
