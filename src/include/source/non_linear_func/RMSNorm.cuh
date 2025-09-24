@@ -12,7 +12,7 @@ vector<PhantomCiphertext> RMSNorm(const vector<PhantomCiphertext> &x, const vect
 
     // algorithm may be different for different data range
     //RMSNorm = x / sqrt((x0^2+x1^2+...+x4096^2)/4096 + eps) * gamma
-    //        = x * sqrt_inv((x0^2+x1^2+...+x4096^2)/ d^2 + eps / d) * gamma / d
+    //        = x * sqrt_inv((x0^2+x1^2+...+x4096^2)/ d^2 + eps / d) * gamma / sqrt(d)
     PhantomCKKSEncoder phantom_encoder(context);
 
     Encoder encoder(&context, &phantom_encoder);
@@ -60,9 +60,9 @@ vector<PhantomCiphertext> RMSNorm(const vector<PhantomCiphertext> &x, const vect
     evaluator.rescale_to_next_inplace(var);
 
 
-    double eps = 1e-6;
+    double eps = 1e-5;
     PhantomPlaintext plain_eps;
-    encoder.encode(eps / 4096.0, var.params_id(), var.scale(), plain_eps);
+    encoder.encode(5000 * eps / 4096.0, var.params_id(), var.scale(), plain_eps);
     evaluator.add_plain_inplace(var, plain_eps);
 
     //DEBUG
