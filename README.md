@@ -24,6 +24,7 @@ Please divide by 256 to get the amortized time.
 ```
 
 ## Citation
+```
 @misc{cryptoeprint:2025/991,
       author = {Linru Zhang and Xiangning Wang and Jun Jie Sim and Zhicong Huang and Jiahao Zhong and Huaxiong Wang and Pu Duan and Kwok Yan Lam},
       title = {{MOAI}: Module-Optimizing Architecture for Non-Interactive Secure Transformer Inference},
@@ -31,3 +32,4 @@ Please divide by 256 to get the amortized time.
       year = {2025},
       url = {https://eprint.iacr.org/2025/991}
 }
+```
