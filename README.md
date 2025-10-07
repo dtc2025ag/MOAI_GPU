@@ -22,3 +22,12 @@ OMP_NUM_THREADS=4 ./test
 All time cost results outputted is the total time of 256 inputs (each input has up to 128 tokens).
 Please divide by 256 to get the amortized time. 
 ```
+
+## Citation
+@misc{cryptoeprint:2025/991,
+      author = {Linru Zhang and Xiangning Wang and Jun Jie Sim and Zhicong Huang and Jiahao Zhong and Huaxiong Wang and Pu Duan and Kwok Yan Lam},
+      title = {{MOAI}: Module-Optimizing Architecture for Non-Interactive Secure Transformer Inference},
+      howpublished = {Cryptology {ePrint} Archive, Paper 2025/991},
+      year = {2025},
+      url = {https://eprint.iacr.org/2025/991}
+}
