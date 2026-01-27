@@ -1,6 +1,6 @@
 # MOAI_GPU
 The code has been tested on Nvidia H200, A100.
-## 1. Reuqirements
+## 1. Requirements
 ```
 CUDA version=11.8
 cmake version>=3.20
