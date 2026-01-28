@@ -430,7 +430,7 @@ vector<PhantomCiphertext> softmax(vector<PhantomCiphertext> &enc_X, vector<int> 
     moai::Evaluator evaluator_local(&context, &phantom_encoder_local);
 
     const int tid = omp_get_thread_num();
-    auto &stream = stream_pool[tid]; // ★ 引用，不要拷贝 wrapper
+    auto &stream = stream_pool[tid]; 
 
 #pragma omp for schedule(static)
     for (int i = 0; i < num; ++i)
