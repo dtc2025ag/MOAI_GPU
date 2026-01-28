@@ -153,7 +153,7 @@ void bootstrapping_test()
   std::cout << "Bootstrapping took: " << sec.count() << "s" << endl;
   std::cout << "Return cipher level: " << rtn.coeff_modulus_size() << endl;
 
-  // cudaError_t err = cudaDeviceSynchronize();  // <<<<<< 加这里
+  // cudaError_t err = cudaDeviceSynchronize();  //
   // if (err != cudaSuccess) {
   //     std::cerr << "CUDA error after bootstrap: " << cudaGetErrorString(err) << std::endl;
   // }
