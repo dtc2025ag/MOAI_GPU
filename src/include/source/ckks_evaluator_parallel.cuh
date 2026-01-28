@@ -122,7 +122,6 @@ namespace moai
     inline void encrypt(PhantomPlaintext &plain, PhantomCiphertext &ct,
                         const cuda_stream_wrapper &stream_wrapper = *phantom::util::global_variables::default_stream)
     {
-      // 暂未向下传递，预留参数
       encryptor->encrypt_asymmetric(*context, plain, ct, stream_wrapper);
     }
   };
