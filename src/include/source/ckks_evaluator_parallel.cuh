@@ -335,7 +335,7 @@ namespace moai
     {
 
       dest = ::rotate_vector(*context, ct, steps, galois_keys, stream_wrapper);
-      cudaStreamSynchronize(ct.data_ptr().get_stream()); // 当前仍需要
+      cudaStreamSynchronize(ct.data_ptr().get_stream());
     }
 
     inline void rotate_vector_inplace(PhantomCiphertext &ct, int steps, PhantomGaloisKey &galois_keys,
@@ -343,7 +343,7 @@ namespace moai
     {
 
       ::rotate_vector_inplace(*context, ct, steps, galois_keys, stream_wrapper);
-      cudaStreamSynchronize(ct.data_ptr().get_stream()); // 当前仍需要
+      cudaStreamSynchronize(ct.data_ptr().get_stream());
     }
 
     // Negation
