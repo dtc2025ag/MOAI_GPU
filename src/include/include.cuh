@@ -62,7 +62,6 @@ static inline std::size_t output_device_bytes(const std::vector<PhantomCiphertex
     return total;
 }
 
-// 打印为 MB
 static inline void print_output_mem(const std::vector<PhantomCiphertext> &output)
 {
     const double MB = 1024.0 * 1024.0;
@@ -195,3 +194,4 @@ vector<PhantomCiphertext> deep_copy_cipher(const vector<PhantomCiphertext> &src,
 #include "test/non_linear_func/test_RMSNorm.cuh"
 
 #endif
+
