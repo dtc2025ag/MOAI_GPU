@@ -482,7 +482,16 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
 
         // Copy sk data from device to host
         uint64_t *sk_arr_non_ntt = new uint64_t[poly_degree * coeff_mod_size];
-        cudaMemcpy(sk_arr_non_ntt, secret_key_array_.get(), poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+        // previous cpy
+        //cudaMemcpy(sk_arr_non_ntt, secret_key_array_.get(), poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+        cudaMemcpyAsync(
+          sk_arr_non_ntt.data(),
+          secret_key_array_.get(),
+          sk_bytes,
+          cudaMemcpyDeviceToHost,
+          s);
+
+        cudaStreamSynchronize(s);
 
         //   for (int i = 0; i < 10; ++i) {
         //         std::cout << "sk_arr_non_ntt[" << i << "] = " << sk_arr_non_ntt[i] << std::endl;
@@ -500,12 +509,21 @@ void PhantomSecretKey::gen_secretkey(const PhantomContext &context, const cudaSt
         }
 
         // Copy the adjusted secret key back to the device
-        cudaMemcpy(secret_key_array_.get(), sk_arr_non_ntt, poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyHostToDevice);
+        // previous cpy
+        //cudaMemcpy(secret_key_array_.get(), sk_arr_non_ntt, poly_degree * coeff_mod_size * sizeof(uint64_t), cudaMemcpyHostToDevice);
+        cudaMemcpyAsync(
+          secret_key_array_.get(),
+          sk_arr_non_ntt.data(),
+          sk_bytes,
+          cudaMemcpyHostToDevice,
+          s);
     }
 
     // Compute the NTT form of secret key and
     // save secret_key to the first coeff_mod_size * N elements of secret_key_array
     nwt_2d_radix8_forward_inplace(secret_key_array_.get(), context.gpu_rns_tables(), coeff_mod_size, 0, s);
+
+    cudaStreamSynchronize(s);
 
     chain_index_ = 0;
     sk_max_power_ = 1;
